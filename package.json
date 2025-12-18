@@ -1,0 +1,56 @@
+{
+  "name": "markdown-to-excel",
+  "version": "1.0.0",
+  "description": "MarkdownファイルをExcelファイルに変換するElectronアプリケーション",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "dev": "tsc && electron .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": ["markdown", "excel", "converter", "electron"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "marked": "^14.0.0",
+    "fast-check": "^3.22.0"
+  },
+  "build": {
+    "appId": "com.example.markdown-to-excel",
+    "productName": "Markdown to Excel Converter",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { parseMarkdownFile } from './markdown-parser';
+import { parseMarkdownFile } from '@/parser/markdown-parser';
 import * as fs from 'fs';
 import * as path from 'path';
 

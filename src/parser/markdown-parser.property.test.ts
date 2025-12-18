@@ -1,7 +1,7 @@
 import * as fc from 'fast-check';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseMarkdownFile } from './markdown-parser';
+import { parseMarkdownFile } from '@/parser/markdown-parser';
 import { markdownDocumentGenerator } from '@/test-utils/generators';
 
 /**

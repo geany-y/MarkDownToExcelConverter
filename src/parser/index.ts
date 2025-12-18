@@ -1,1 +1,1 @@
-export { MarkdownParser } from './markdown-parser';
+export { parseMarkdownFile } from '@/parser/markdown-parser';

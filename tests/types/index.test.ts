@@ -1,5 +1,5 @@
-import { defaultExcelConfig } from '@/types';
-import { isValidExcelConfig } from '@/test-utils/helpers';
+import { defaultExcelConfig } from '../../src/types';
+import { isValidExcelConfig } from '../../src/test-utils/helpers';
 
 describe('Types', () => {
     describe('defaultExcelConfig', () => {

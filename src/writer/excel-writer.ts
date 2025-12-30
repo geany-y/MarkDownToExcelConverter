@@ -1,7 +1,7 @@
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
 import * as fs from 'fs';
-import { Document, ExcelConfig, RichTextSegment, FontStyle, DocumentLine } from '@/types';
+import { Document, ExcelConfig, RichTextSegment, FontStyle, DocumentLine } from '../types';
 
 /**
  * 書類オブジェクトをExcelファイル（Buffer）に書き出す

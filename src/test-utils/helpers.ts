@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { DocumentLine, Document, ExcelConfig } from '@/types';
+import { DocumentLine, Document, ExcelConfig } from '../types';
 
 /**
  * 一時ファイルを作成するヘルパー関数

@@ -34,8 +34,7 @@
   "dependencies": {
     "exceljs": "^4.4.0",
     "fast-check": "^3.22.0",
-    "marked": "^14.0.0",
-    "module-alias": "^2.2.3"
+    "marked": "^14.0.0"
   },
   "build": {
     "appId": "com.example.markdown-to-excel",
@@ -58,11 +57,6 @@
     "mac": {
       "target": "dmg"
     },
-    "linux": {
-      "target": "AppImage"
-    }
-  },
-  "_moduleAliases": {
-    "@": "dist"
+    "linux": {}
   }
 }

@@ -15,18 +15,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "baseUrl": "./src",
-    "rootDir": "src",
-    "paths": {
-      "@/*": [
-        "*"
-      ],
-      "@/types/*": [
-        "types/*"
-      ],
-      "@/test-utils/*": [
-        "test-utils/*"
-      ]
-    }
+    "rootDir": "src"
   },
   "include": [
     "src/**/*"

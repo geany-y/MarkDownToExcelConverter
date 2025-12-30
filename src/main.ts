@@ -1,10 +1,9 @@
-import 'module-alias/register';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { parseMarkdownFile } from './parser/markdown-parser';
 import { writeExcel } from './writer/excel-writer';
-import { defaultExcelConfig } from '@/types';
+import { defaultExcelConfig } from './types';
 
 console.log('Main process starting...');
 

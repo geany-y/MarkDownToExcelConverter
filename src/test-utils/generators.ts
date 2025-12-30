@@ -1,5 +1,5 @@
 import * as fc from 'fast-check';
-import { DocumentLine, FormatInfo, ExcelConfig, defaultExcelConfig, RichTextSegment } from '@/types';
+import { DocumentLine, FormatInfo, ExcelConfig, defaultExcelConfig, RichTextSegment } from '../types';
 
 /**
  * Markdownテキスト生成用のジェネレーター

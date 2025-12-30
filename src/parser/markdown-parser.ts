@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Lexer } from 'marked';
-import { DocumentLine, FormatInfo, Document, defaultExcelConfig, RichTextSegment, FontStyle } from '@/types';
+import { DocumentLine, FormatInfo, Document, defaultExcelConfig, RichTextSegment, FontStyle } from '../types';
 
 /**
  * Markdownファイルを読み込んで解析する

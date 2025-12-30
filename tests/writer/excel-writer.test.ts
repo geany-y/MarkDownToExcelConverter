@@ -1,5 +1,5 @@
-import { writeExcel } from '@/writer/excel-writer';
-import { Document, defaultExcelConfig } from '@/types';
+import { writeExcel } from '../../src/writer/excel-writer';
+import { Document, defaultExcelConfig } from '../../src/types';
 import * as ExcelJS from 'exceljs';
 
 describe('ExcelWriter', () => {

@@ -1,8 +1,8 @@
 import * as fc from 'fast-check';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseMarkdownFile } from '@/parser/markdown-parser';
-import { markdownDocumentGenerator } from '@/test-utils/generators';
+import { parseMarkdownFile } from '../../src/parser/markdown-parser';
+import { markdownDocumentGenerator } from '../../src/test-utils/generators';
 
 /**
  * **Feature: markdown-to-excel, Property 1: ファイル読み込みと解析**

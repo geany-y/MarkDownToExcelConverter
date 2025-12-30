@@ -62,7 +62,7 @@ npm run dist         # 配布用パッケージを作成
 ```
 
 ### プロジェクト設定
-- **TypeScript**: 厳格モード有効、パスエイリアス設定済み（@/*）
+- **TypeScript**: 厳格モード有効
 - **Jest**: Node環境、カバレッジレポート有効
 - **Electron Builder**: マルチプラットフォームビルド（Windows NSIS、macOS DMG、Linux AppImage）
 
@@ -119,10 +119,7 @@ npm run dist         # 配布用パッケージを作成
 - **関数**: 説明的な名前のcamelCase
 - **定数**: 設定用はcamelCase、真の定数はUPPER_CASE
 
-### パスエイリアス
-- `@/*` は `src/*` にマップされ、よりクリーンなインポートを実現
-- `@/types/*` は型のインポート用
-- `@/test-utils/*` はテストユーティリティ用
+
 
 ---
 inclusion: always

@@ -1,8 +1,8 @@
 import * as fc from 'fast-check';
 import * as ExcelJS from 'exceljs';
-import { writeExcel } from '@/writer/excel-writer';
-import { excelConfigGenerator, documentLineGenerator } from '@/test-utils/generators';
-import { Document } from '@/types';
+import { writeExcel } from '../../src/writer/excel-writer';
+import { excelConfigGenerator, documentLineGenerator } from '../../src/test-utils/generators';
+import { Document } from '../../src/types';
 
 /**
  * ExcelWriter プロパティベーステスト

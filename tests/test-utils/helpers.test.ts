@@ -11,8 +11,8 @@ import {
     getLineType,
     createMockDocumentLine,
     createMockDocument
-} from '@/test-utils/helpers';
-import { defaultExcelConfig } from '@/types';
+} from '../../src/test-utils/helpers';
+import { defaultExcelConfig } from '../../src/types';
 
 describe('Test Helpers', () => {
     describe('ファイル操作ヘルパー', () => {

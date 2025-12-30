@@ -1,9 +1,8 @@
 # Anti Gravity Configuration (Project Rules)
 
-This file contains project rules and context derived from Kiro's AWS steering files.
+This file contains project rules and context for the AntiGravity project.
 
 ## Product Overview
-(Source: .kiro/steering/product.md)
 
 Markdown to Excel Converter
 
@@ -23,7 +22,6 @@ Markdownファイルを文書構造とインデントを保持したままExcel�
 このアプリケーションは主に日本語ユーザー向けに開発されており、コードベース全体で日本語のコメントとエラーメッセージを使用しています。
 
 ## Technology Stack
-(Source: .kiro/steering/tech.md)
 
 ### コア技術
 - **Electron**: デスクトップアプリケーションフレームワーク
@@ -75,7 +73,6 @@ npm run dist         # 配布用パッケージを作成
 - **型システム**: ドキュメント構造とExcel設定の集約されたインターフェース
 
 ## Project Structure
-(Source: .kiro/steering/structure.md)
 
 ### ディレクトリ構成
 
@@ -133,12 +130,15 @@ inclusion: always
 <!------------------------------------------------------------------------------------
    Add rules to this file or a short description that will apply across all your workspaces.
 
-   Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
+   Learn more about project steering in the documentation.
 ------------------------------------------------------------------------------------->
 # 共通ルール
 
 ## コマンドライン実行時の確認ルール
-- Kiroでは長い処理をコマンドラインで行った際に結果の確認が不正確なため、処理完了後は必ずユーザーに結果の確認を行う
+- AntiGravityでは長い処理をコマンドラインで行った際に結果の確認が不正確なため、処理完了後は必ずユーザーに結果の確認を行う
+- AntiGravityではコマンドの完了を正しく確認できていないために次のアクションの前にユーザに結果の確認を依頼してください
+   - npm install(他の言語のライブラリのインストールなども含む)なやtestなど時間がかかるもの
+- コンソールはWSL2がベースなためにPower Shellのコマンドは利用せずBashのコマンドで行う
 - テスト実行、ビルド処理、その他の長時間実行されるコマンドについては、実行後にユーザーに成功/失敗の確認を求める
 - コマンドの出力結果が不明確な場合は、推測せずにユーザーに状況を報告し、確認を依頼する
 
@@ -148,15 +148,10 @@ inclusion: always
    - コンソールや画面などへ出力するテキスト
    - ソース内のコメント
 
-# Kiroによるコマンド実行時のルール
-- コンソールはWSL2がベースなためにPower Shellのコマンドは利用せずBashのコマンドで行う
-- Kiroではコマンドの完了を正しく確認できていないために次のアクションの前にユーザに結果の確認を依頼してください
-   - npm install(他の言語のライブラリのインストールなども含む)なやtestなど時間がかかるもの
-
 # GIT運用ルール
 - 新しいタスクを実行する場合は、必ずブランチ名を作成してチェックアウトしてから、そのブランチでタスクを完了してください
 ## ブランチ名
-- feature/kiro_[タスクNo]_[タスクの内容]
+- feature/ag_[タスクNo]_[タスクの内容]
    - ブランチ名はスネークケースとし「.」などの記号は含めない
 ## レビュー
 - ソース生成後は必ず私にレビューを依頼してください

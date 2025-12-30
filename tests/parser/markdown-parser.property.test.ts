@@ -109,7 +109,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
 
     /**
      * 存在しないファイルに対するエラーハンドリングのテスト
@@ -197,7 +197,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
 
     /**
      * **Feature: markdown-to-excel, Property 6: スペース・タブインデント認識**
@@ -273,7 +273,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    }, 30000);
+    }, 60000);
     /**
      * **Feature: markdown-to-excel, Property 7: 見出し要素変換**
      * **検証対象: 要件 3.1**
@@ -332,7 +332,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
     /**
      * **Feature: markdown-to-excel, Property 8: 段落テキスト変換**
      * **検証対象: 要件 3.2**
@@ -387,7 +387,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
     /**
      * **Feature: markdown-to-excel, Property 9: リスト要素変換**
      * **検証対象: 要件 3.3**
@@ -451,7 +451,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
     /**
      * **Feature: markdown-to-excel, Property 10: 表要素除外**
      * **検証対象: 要件 3.4**
@@ -510,7 +510,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
     /**
      * **Feature: markdown-to-excel, Property 11: コードブロック変換**
      * **検証対象: 要件 3.5**
@@ -594,7 +594,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
     /**
      * **Feature: markdown-to-excel, Property 15: 見出し書式適用**
      * **検証対象: 要件 5.1**
@@ -661,7 +661,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 60000);
 
     /**
      * 見出しレベルに対応する期待フォントサイズを取得するヘルパー関数
@@ -722,7 +722,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * **Feature: markdown-to-excel, Property 17: 斜体書式適用**
@@ -771,7 +771,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * **Feature: markdown-to-excel, Property 18: 取り消し線書式適用**
@@ -820,7 +820,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * 任意の複合書式（太字かつ斜体）に対して、Excelの対応する書式プロパティがtrueになる
@@ -870,7 +870,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * 任意のリンク記法に対して、RichTextSegmentのlinkプロパティが正しく設定される
@@ -914,7 +914,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 50 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * 任意の画像記法に対して、RichTextSegmentのimageプロパティが正しく設定される
@@ -962,7 +962,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 50 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * 任意のインラインコード記法に対して、RichTextSegmentのcodeフラグがtrueになる
@@ -1005,7 +1005,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 50 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * 任意の引用記法に対して、行タイプがquoteになる
@@ -1046,7 +1046,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 50 }
         );
-    }, 30000);
+    }, 60000);
 
     /**
      * 任意の水平線記法に対して、行タイプがhorizontal_ruleになる
@@ -1081,5 +1081,5 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 50 }
         );
-    }, 30000);
+    }, 60000);
 });

@@ -413,6 +413,7 @@ _斜体のテキスト2_
         expect(italicSegment).toBeDefined();
         expect(italicSegment?.text).toBe('斜体');
     });
+
     it('複合的な書式（リンクを含む）および未閉塞タグ（エッジケース）を正しく処理する', async () => {
         const testContent = `*test@example.com*
 **[Google](https://google.com)**

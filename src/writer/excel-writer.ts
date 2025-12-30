@@ -1,15 +1,33 @@
 import * as ExcelJS from 'exceljs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Document, ExcelConfig, RichTextSegment, FontStyle, DocumentLine } from '@/types';
 
 /**
  * 書類オブジェクトをExcelファイル（Buffer）に書き出す
  * @param document 解析済み書類オブジェクト
  * @param config Excel生成設定
+ * @param outputPath 出力先パス (既存ファイルがあれば読み込む)
  * @returns 生成されたExcelファイルのBuffer
  */
-export const writeExcel = async (document: Document, config: ExcelConfig): Promise<Buffer> => {
+export const writeExcel = async (document: Document, config: ExcelConfig, outputPath?: string): Promise<Buffer> => {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Sheet1');
+
+    // 既存のファイルが存在する場合は、まず読み込む (シート追記のため)
+    if (outputPath && fs.existsSync(outputPath)) {
+        try {
+            await workbook.xlsx.readFile(outputPath);
+        } catch (error) {
+            console.warn(`Could not read existing file, creating new one instead: ${error}`);
+        }
+    }
+
+    // 新しいワークシートを追加
+    // シート名は重複を避けるため「MD_[ファイル名]」とし、31文字制限に収める
+    const baseFileName = path.parse(document.metadata.fileName || 'document').name;
+    const timestamp = new Date().getTime().toString().slice(-4);
+    const sheetName = `MD_${baseFileName}_${timestamp}`.substring(0, 31);
+    const worksheet = workbook.addWorksheet(sheetName);
 
     // 方眼紙（グリッド）レイアウトの設定
     setupGridLayout(worksheet, config);
@@ -18,6 +36,40 @@ export const writeExcel = async (document: Document, config: ExcelConfig): Promi
     document.lines.forEach((line, index) => {
         writeLineToWorksheet(worksheet, line, index + 1, config);
     });
+
+    // ドキュメント全体のリンクを収集して末尾に追加
+    const allLinks = collectAllLinks(document);
+    if (allLinks.length > 0) {
+        const nextRow = document.lines.length + 3; // 2行空ける
+
+        // 「## リンク」見出し (H2相当の書式)
+        const headerCell = worksheet.getCell(nextRow, 1);
+        headerCell.value = 'リンク';
+        headerCell.font = {
+            bold: true,
+            size: config.headerFontSizes[2],
+            name: config.fontName
+        };
+
+        // リンク一覧を箇条書きで出力 [番号] URL
+        allLinks.forEach((link, idx) => {
+            const rowNum = nextRow + 1 + idx;
+            const indexLabel = `[${idx + 1}]`;
+            const linkCell = worksheet.getCell(rowNum, 1);
+
+            // セル自体にハイパーリンクを設定しつつ、テキストで番号を表示
+            linkCell.value = {
+                text: `${indexLabel} ${link}`,
+                hyperlink: link
+            };
+            linkCell.font = {
+                color: { argb: 'FF0563C1' },
+                underline: true,
+                name: config.fontName,
+                size: config.baseFontSize
+            };
+        });
+    }
 
     return await workbook.xlsx.writeBuffer() as unknown as Buffer;
 };
@@ -54,10 +106,7 @@ const writeLineToWorksheet = (
     const startColumnIndex = (line.indentLevel * config.indentColumnOffset) + 1;
     const cell = worksheet.getCell(rowNumber, startColumnIndex);
 
-    // 行内のリンクを抽出
-    const links = extractLinks(line.richText);
-
-    // リッチテキストに変換して設定（リンク番号を付加）
+    // リッチテキストに変換して設定
     cell.value = {
         richText: convertToExcelRichText(line.richText)
     };
@@ -86,27 +135,27 @@ const writeLineToWorksheet = (
     // 行の高さ設定
     const row = worksheet.getRow(rowNumber);
     row.height = config.rowHeight;
+};
 
-    // サイドセルへのリンク展開
-    if (links.length > 0) {
-        links.forEach((link, idx) => {
-            const linkColumnIndex = startColumnIndex + 1 + idx; // メインセルの右隣から順番に配置
-            const linkCell = worksheet.getCell(rowNumber, linkColumnIndex);
-            const indexLabel = `[${idx + 1}]`;
+/**
+ * ドキュメント内のすべてのユニークなリンクURLを順番通りに収集する
+ * @param document ドキュメント
+ * @returns URLの配列
+ */
+const collectAllLinks = (document: Document): string[] => {
+    const allUrls = new Set<string>();
+    const orderedUrls: string[] = [];
 
-            linkCell.value = {
-                text: `${indexLabel} ${link.target}`,
-                hyperlink: link.target,
-                tooltip: link.target
-            };
-
-            // リンク部分の書式設定（青字・下線）
-            linkCell.font = {
-                color: { argb: 'FF0563C1' },
-                underline: true
-            };
+    document.lines.forEach(line => {
+        line.richText.forEach(segment => {
+            if (segment.link?.target && !allUrls.has(segment.link.target)) {
+                allUrls.add(segment.link.target);
+                orderedUrls.push(segment.link.target);
+            }
         });
-    }
+    });
+
+    return orderedUrls;
 };
 
 /**
@@ -135,20 +184,20 @@ const extractLinks = (segments: RichTextSegment[]): Array<{ target: string }> =>
  */
 const convertToExcelRichText = (segments: RichTextSegment[]): ExcelJS.RichText[] => {
     const result: ExcelJS.RichText[] = [];
-    let linkCount = 0;
     const targetToIndex = new Map<string, number>();
+    let linkCounter = 0;
 
     segments.forEach(segment => {
         let text = segment.text;
 
-        // リンクがある場合は番号を付与
+        // 本文中の各リンクには [n] を付与して巻末との対応を明確にする
         if (segment.link?.target) {
             if (!targetToIndex.has(segment.link.target)) {
-                linkCount++;
-                targetToIndex.set(segment.link.target, linkCount);
+                linkCounter++;
+                targetToIndex.set(segment.link.target, linkCounter);
             }
-            const index = targetToIndex.get(segment.link.target);
-            text += ` [${index}]`;
+            // 番号のみを付加（URLそのものは書かない）
+            text += ` [${targetToIndex.get(segment.link.target)}]`;
         }
 
         const richText: ExcelJS.RichText = {

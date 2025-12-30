@@ -45,7 +45,9 @@ describe('ExcelWriter', () => {
         const workbook = new ExcelJS.Workbook();
         // 実行環境におけるBuffer型の定義不一致を解消するため、メソッドの引数型を直接指定してキャスト
         await workbook.xlsx.load(excelBuffer as unknown as Parameters<ExcelJS.Xlsx['load']>[0]);
-        const worksheet = workbook.getWorksheet('Sheet1');
+        // シート名を特定できないため、インデックスで取得（最初のシート）
+        // 実装では addWorksheet を呼んでいるため、必ず最後に追加されたシート、あるいは唯一のシートになるはず
+        const worksheet = workbook.worksheets[0];
         expect(worksheet).toBeDefined();
 
         // 内容確認

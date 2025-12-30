@@ -15,6 +15,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "baseUrl": "./src",
+    "rootDir": "src",
     "paths": {
       "@/*": [
         "*"
@@ -28,8 +29,7 @@
     }
   },
   "include": [
-    "src/**/*",
-    "tests/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

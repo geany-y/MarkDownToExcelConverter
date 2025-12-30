@@ -8,10 +8,10 @@ describe('Types', () => {
         });
 
         it('デフォルト設定が期待される値を持つこと', () => {
-            expect(defaultExcelConfig.cellWidth).toBe(15.0);
+            expect(defaultExcelConfig.cellWidth).toBe(3.0);
             expect(defaultExcelConfig.rowHeight).toBe(20.0);
             expect(defaultExcelConfig.indentColumnOffset).toBe(1);
-            expect(defaultExcelConfig.fontName).toBe('Arial');
+            expect(defaultExcelConfig.fontName).toBe('Meiryo');
             expect(defaultExcelConfig.codeFontName).toBe('Consolas');
             expect(defaultExcelConfig.baseFontSize).toBe(11);
         });

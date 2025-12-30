@@ -114,10 +114,10 @@ export interface ExcelConfig {
  * デフォルトのExcel設定
  */
 export const defaultExcelConfig: ExcelConfig = {
-    cellWidth: 15.0,
+    cellWidth: 3.0,
     rowHeight: 20.0,
     indentColumnOffset: 1,
-    fontName: "Arial",
+    fontName: "Meiryo",
     codeFontName: "Consolas",
     baseFontSize: 11,
     headerFontSizes: { 1: 18, 2: 16, 3: 14, 4: 12, 5: 11, 6: 10 },

@@ -20,16 +20,25 @@ export const parseMarkdownFile = async (filePath: string): Promise<Document> => 
     // 行ごとに分割して解析（各種改行コードに対応）
     const lines = normalizeAndSplitLines(content);
 
-    // コードブロック状態を追跡しながら解析
+    // コードブロック状態とリスト連番を追跡しながら解析
     let isInCodeBlock = false;
+    let listCounter: Record<number, number> = {}; // インデントレベルごとの連番を管理
+
     const documentLines = lines.map((line) => {
         // コードブロックの開始・終了を先に追跡
-        const trimmedLine = removeIndentOnly(line, detectIndentLevel(line));
+        const indentLevel = detectIndentLevel(line);
+        const trimmedLine = removeIndentOnly(line, indentLevel);
+
         if (trimmedLine.startsWith('```')) {
             isInCodeBlock = !isInCodeBlock;
         }
 
-        const result = parseLine(line, isInCodeBlock);
+        const result = parseLine(line, isInCodeBlock, listCounter);
+
+        // 現在の行がリスト項目でない場合、そのレベル以下のカウンタをリセット
+        if (result.lineType !== 'list_item') {
+            listCounter = {};
+        }
 
         return result;
     });
@@ -87,9 +96,10 @@ const readFileAsync = async (filePath: string): Promise<string> => {
  * 単一行を解析してDocumentLineオブジェクトに変換する
  * @param line 解析対象の行
  * @param isInCodeBlock コードブロック内かどうか
+ * @param listCounter リスト連番管理オブジェクト
  * @returns DocumentLineオブジェクト
  */
-const parseLine = (line: string, isInCodeBlock: boolean = false): DocumentLine => {
+const parseLine = (line: string, isInCodeBlock: boolean = false, listCounter: Record<number, number> = {}): DocumentLine => {
     const originalLine = line;
 
     // インデントレベルを検出
@@ -104,12 +114,19 @@ const parseLine = (line: string, isInCodeBlock: boolean = false): DocumentLine =
     // 書式情報を生成（見出し記法の解析を含む）
     const formatting: FormatInfo = analyzeFormatting(trimmedLine, lineType);
 
+    // リストの連番処理
+    let listNumber = 0;
+    if (lineType === 'list_item') {
+        const isOrdered = trimmedLine.match(/^\d+\.\s/);
+        if (isOrdered) {
+            listCounter[indentLevel] = (listCounter[indentLevel] || 0) + 1;
+            listNumber = listCounter[indentLevel];
+        }
+    }
+
     // リッチテキストセグメントを生成
     // NOTE: generateRichTextSegments内でstripPrefixも行われる
-    // コードブロック内の段落（＝コード内容）は書式解析せず、そのままテキストとして扱う
-    // リッチテキストセグメントを生成
-    // NOTE: generateRichTextSegments内でstripPrefixも行われる
-    const richText = determineRichTextSegments(trimmedLine, lineType, formatting, isInCodeBlock);
+    const richText = determineRichTextSegments(trimmedLine, lineType, formatting, isInCodeBlock, listNumber);
 
     // リッチテキストからプレーンテキストを生成（書式なし、プレフィックスなし）
     const plainText = richText.map(segment => segment.text).join('');
@@ -267,6 +284,12 @@ const analyzeFormatting = (line: string, lineType: string): FormatInfo => {
         formatting.fontSize = getHeaderFontSize(headerLevel);
     }
 
+    // コードブロックの背景色
+    if (lineType === 'code_block' || (lineType === 'paragraph' && formatting.isQuote === false && line.startsWith(' '))) {
+        // 注: isInCodeBlockでの判定はdetermineLineTypeで行われるため
+        // ここでは明示的なcode_blockタイプに対して色を設定
+    }
+
     // 引用の解析
     if (lineType === 'quote') {
         formatting.isQuote = true;
@@ -288,15 +311,23 @@ const analyzeFormatting = (line: string, lineType: string): FormatInfo => {
  * @param line 対象行（インデント除去済み）
  * @param lineType 行タイプ
  * @param formatting 行全体の書式情報
+ * @param isInCodeBlock コードブロック内かどうか
  * @returns RichTextSegment配列
  */
-const generateRichTextSegments = (line: string, lineType: string, formatting: FormatInfo): RichTextSegment[] => {
-    // 行タイプに応じたプレフィックス除去と置換
-    let content = stripLinePrefix(line, lineType);
+const generateRichTextSegments = (line: string, lineType: string, formatting: FormatInfo, isInCodeBlock: boolean = false): RichTextSegment[] => {
+    // 行タイプに応じたプレフィックス除去
+    // NOTE: list_item の記号(・ or 1.)は既に付与済みなので、ここでは stripLinePrefix で消さないようにする
+    let content = line;
+    if (lineType !== 'list_item') {
+        content = stripLinePrefix(line, lineType);
+    }
+
+    // すでに determineRichTextSegments で付加されたリスト記号を二重に処理しないよう注意
+    // (stripLinePrefix は Markdown 元来の記号を消すもの)
 
     // コンテンツ全体が置き換わる特別なケース
     if (lineType === 'horizontal_rule') {
-        return [{ text: '水平線' }];
+        return [{ text: '------------------------------' }];
     }
     if (lineType === 'table') {
         return [{ text: '表：' + content }];
@@ -311,7 +342,24 @@ const generateRichTextSegments = (line: string, lineType: string, formatting: Fo
     }
 
     // インライン書式記法を解析してリッチテキストセグメントを生成
-    return parseInlineFormatting(content);
+    const segments = parseInlineFormatting(content);
+
+    // 行レベルの書式（フォントサイズ、見出しの太字、コードブロックの文字色）を全セグメントに適用
+    return segments.map(segment => {
+        const font = { ...segment.font };
+        if (formatting.fontSize) {
+            font.size = formatting.fontSize;
+        }
+        if (formatting.headerLevel > 0) {
+            font.bold = true;
+        }
+        // コードブロック内の文字をダークブルーに変更
+        if (lineType === 'code_block' || (isInCodeBlock && lineType === 'paragraph')) {
+            font.color = { argb: 'FF000080' }; // DarkBlue
+            font.name = defaultExcelConfig.codeFontName;
+        }
+        return { ...segment, font };
+    });
 };
 
 /**
@@ -320,15 +368,36 @@ const generateRichTextSegments = (line: string, lineType: string, formatting: Fo
  * @param lineType 行タイプ
  * @param formatting 書式情報
  * @param isInCodeBlock コードブロック内かどうか
+ * @param listNumber リスト連番
  * @returns RichTextSegment配列
  */
-const determineRichTextSegments = (line: string, lineType: string, formatting: FormatInfo, isInCodeBlock: boolean): RichTextSegment[] => {
-    // コードブロック内の段落（＝コード内容）は書式解析せず、そのままテキストとして扱う
-    if (isInCodeBlock && lineType === 'paragraph') {
-        return [{ text: stripLinePrefix(line, lineType) }];
+const determineRichTextSegments = (line: string, lineType: string, formatting: FormatInfo, isInCodeBlock: boolean, listNumber: number = 0): RichTextSegment[] => {
+    // 箇条書きや番号付きリストの記号を明示的に付与
+    let processedLine = line;
+
+    if (lineType === 'list_item' && line.match(/^[-*+]\s/)) {
+        // 元の記号を消して「・ 」を付ける
+        processedLine = '・ ' + line.replace(/^[-*+]\s/, '');
     }
 
-    return generateRichTextSegments(line, lineType, formatting);
+    if (lineType === 'list_item' && listNumber > 0) {
+        // 元の数字を消して連番「n. 」を付ける
+        processedLine = `${listNumber}. ` + line.replace(/^\d+\.\s/, '');
+    }
+
+    // コードブロック内の段落（＝コード内容）は書式解析せず、そのままテキストとして扱う
+    if (isInCodeBlock && lineType === 'paragraph') {
+        const content = stripLinePrefix(processedLine, lineType);
+        return [{
+            text: content,
+            font: {
+                color: { argb: 'FF000080' },
+                name: defaultExcelConfig.codeFontName
+            }
+        }];
+    }
+
+    return generateRichTextSegments(processedLine, lineType, formatting, isInCodeBlock);
 };
 
 /**
@@ -367,11 +436,10 @@ const parseInlineFormatting = (text: string): RichTextSegment[] => {
     const lexer = new Lexer();
 
     // LexerのinlineTokensメソッドを使用してインライン要素のみを解析する
-    // 型定義にメソッドが含まれていない場合があるためキャストして使用
-    const tokens = (lexer as any).inlineTokens(text);
+    const tokens = (lexer as Lexer & { inlineTokens: (text: string) => any[] }).inlineTokens(text);
 
     return convertTokensToSegments(tokens);
-};
+}
 
 /**
  * markedのトークンをRichTextSegmentに変換する
@@ -412,9 +480,7 @@ const convertTokensToSegments = (tokens: any[], currentFont: FontStyle = {}): Ri
                     font: {
                         ...currentFont,
                         code: true,
-                        // コード用フォント設定などはExcel生成側で行うが、
-                        // ここでは必要に応じてフラグを持たせてもよい
-                        // 現在は仕様書に「等幅フォント」とあるため、フォント名を指定
+                        color: { argb: 'FFA31515' }, // 濃い赤色 (VS Codeデフォルトに近い)
                         name: defaultExcelConfig.codeFontName
                     }
                 });
@@ -496,11 +562,12 @@ const mergeAdjacentSegments = (segments: RichTextSegment[]): RichTextSegment[] =
         const prev = merged[merged.length - 1];
         const curr = segments[i];
 
-        if (isSameFont(prev.font, curr.font)) {
-            prev.text += curr.text;
-        } else {
+        if (!isSameFont(prev.font, curr.font)) {
             merged.push(curr);
+            continue;
         }
+
+        prev.text += curr.text;
     }
 
     return merged;

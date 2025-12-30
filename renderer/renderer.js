@@ -4,92 +4,110 @@ const { ipcRenderer } = require("electron");
 const appState = {
     inputFilePath: "",
     outputFilePath: "",
+    isConverting: false
 };
 
-// UI要素を取得するヘルパー関数
-function getUIElements() {
-    return {
-        inputFileInput: document.getElementById("inputFile"),
-        outputFileInput: document.getElementById("outputFile"),
-        convertBtn: document.getElementById("convertBtn"),
-        messageDiv: document.getElementById("message"),
-    };
+// UI要素を取得
+const elements = {
+    inputDisplay: document.getElementById("inputFileDisplay"),
+    outputDisplay: document.getElementById("outputFileDisplay"),
+    convertBtn: document.getElementById("convertBtn"),
+    btnText: document.getElementById("btnText"),
+    statusMessage: document.getElementById("statusMessage"),
+};
+
+/**
+ * 変換ボタンの状態を更新
+ */
+function updateUIState() {
+    const canConvert = appState.inputFilePath && appState.outputFilePath && !appState.isConverting;
+    elements.convertBtn.disabled = !canConvert;
+
+    if (appState.isConverting) {
+        elements.btnText.innerHTML = '<span class="spinner"></span> 変換中...';
+    } else {
+        elements.btnText.textContent = "変換を開始する";
+    }
 }
 
-// 変換ボタンの状態を更新
-function updateConvertButton() {
-    const { convertBtn } = getUIElements();
-    convertBtn.disabled = !(appState.inputFilePath && appState.outputFilePath);
+/**
+ * ステータスメッセージを表示
+ */
+function showStatus(text, type) {
+    elements.statusMessage.textContent = text;
+    elements.statusMessage.className = `status-${type}`;
+    elements.statusMessage.style.display = "block";
+
+    if (type === "success") {
+        setTimeout(() => {
+            elements.statusMessage.style.display = "none";
+        }, 5000);
+    }
 }
 
-// メッセージを表示
-function showMessage(text, type) {
-    const { messageDiv } = getUIElements();
-    messageDiv.textContent = text;
-    messageDiv.className = `message ${type}`;
-    messageDiv.style.display = "block";
+/**
+ * 入力ファイルを選択
+ */
+async function handleSelectInput() {
+    const filePath = await ipcRenderer.invoke("select-input-file");
+    if (filePath) {
+        appState.inputFilePath = filePath;
+        elements.inputDisplay.textContent = filePath;
+        updateUIState();
+    }
+}
 
-    if (type !== "success") {
+/**
+ * 保存先ファイルを選択
+ */
+async function handleSelectOutput() {
+    const filePath = await ipcRenderer.invoke("select-output-file");
+    if (filePath) {
+        appState.outputFilePath = filePath;
+        elements.outputDisplay.textContent = filePath;
+        updateUIState();
+    }
+}
+
+/**
+ * 変換実行
+ */
+async function handleConvert() {
+    if (!appState.inputFilePath || !appState.outputFilePath || appState.isConverting) {
         return;
     }
 
-    setTimeout(() => {
-        messageDiv.style.display = "none";
-    }, 3000);
-}
-
-// 入力ファイルを選択
-async function selectInputFile() {
-    const filePath = await ipcRenderer.invoke("select-input-file");
-    if (!filePath) {
-        return; // キャンセルされた場合は何もしない
-    }
-
-    appState.inputFilePath = filePath;
-    const { inputFileInput } = getUIElements();
-    inputFileInput.value = filePath;
-    updateConvertButton();
-}
-
-// 出力ファイルを選択
-async function selectOutputFile() {
-    const filePath = await ipcRenderer.invoke("select-output-file");
-    if (!filePath) {
-        return; // キャンセルされた場合は何もしない
-    }
-
-    appState.outputFilePath = filePath;
-    const { outputFileInput } = getUIElements();
-    outputFileInput.value = filePath;
-    updateConvertButton();
-}
-
-// ファイルを変換
-async function convertFile() {
-    const { convertBtn } = getUIElements();
-
     try {
-        convertBtn.disabled = true;
-        showMessage("変換を開始しています...", "info");
+        appState.isConverting = true;
+        updateUIState();
+        showStatus("Markdown を解析して Excel を生成しています...", "info");
 
-        // TODO: 実際の変換処理を実装
-        // 現在はプレースホルダー
-        const inputPath = appState.inputFilePath;
-        const outputPath = appState.outputFilePath;
+        console.log(`Starting conversion: ${appState.inputFilePath} -> ${appState.outputFilePath}`);
 
-        // 変換処理のシミュレーション
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // メインプロセスの変換ハンドラーを呼び出し
+        const result = await ipcRenderer.invoke(
+            "convert-md-to-excel",
+            appState.inputFilePath,
+            appState.outputFilePath
+        );
 
-        showMessage("変換が完了しました！", "success");
+        console.log('Conversion result received:', result);
+
+        if (result.success) {
+            showStatus("変換が正常に完了しました！", "success");
+        } else {
+            throw new Error(result.error || "不明なエラーが発生しました");
+        }
     } catch (error) {
-        showMessage(`エラーが発生しました: ${error.message}`, "error");
+        console.error('Conversion failed:', error);
+        showStatus(`エラー: ${error.message}`, "error");
     } finally {
-        convertBtn.disabled = false;
-        updateConvertButton();
+        appState.isConverting = false;
+        updateUIState();
     }
 }
 
-// グローバルスコープに関数を公開（HTMLから呼び出すため）
-window.selectInputFile = selectInputFile;
-window.selectOutputFile = selectOutputFile;
-window.convertFile = convertFile;
+// グローバルに公開（HTML から呼び出すため）
+window.handleSelectInput = handleSelectInput;
+window.handleSelectOutput = handleSelectOutput;
+window.handleConvert = handleConvert;

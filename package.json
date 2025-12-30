@@ -10,9 +10,16 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:win:dir": "electron-builder --win --dir"
   },
-  "keywords": ["markdown", "excel", "converter", "electron"],
+  "keywords": [
+    "markdown",
+    "excel",
+    "converter",
+    "electron"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
@@ -26,8 +33,9 @@
   },
   "dependencies": {
     "exceljs": "^4.4.0",
+    "fast-check": "^3.22.0",
     "marked": "^14.0.0",
-    "fast-check": "^3.22.0"
+    "module-alias": "^2.2.3"
   },
   "build": {
     "appId": "com.example.markdown-to-excel",
@@ -37,7 +45,8 @@
     },
     "files": [
       "dist/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "renderer/**/*"
     ],
     "nsis": {
       "oneClick": false,
@@ -52,5 +61,8 @@
     "linux": {
       "target": "AppImage"
     }
+  },
+  "_moduleAliases": {
+    "@": "dist"
   }
 }

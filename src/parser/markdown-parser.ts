@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { DocumentLine, FormatInfo, Document } from '@/types';
+import { Lexer } from 'marked';
+import { DocumentLine, FormatInfo, Document, defaultExcelConfig, RichTextSegment, FontStyle } from '@/types';
 
 /**
  * Markdownファイルを読み込んで解析する
@@ -22,13 +23,13 @@ export const parseMarkdownFile = async (filePath: string): Promise<Document> => 
     // コードブロック状態を追跡しながら解析
     let isInCodeBlock = false;
     const documentLines = lines.map((line) => {
-        const result = parseLine(line, isInCodeBlock);
-
-        // コードブロックの開始・終了を追跡
+        // コードブロックの開始・終了を先に追跡
         const trimmedLine = removeIndentOnly(line, detectIndentLevel(line));
         if (trimmedLine.startsWith('```')) {
             isInCodeBlock = !isInCodeBlock;
         }
+
+        const result = parseLine(line, isInCodeBlock);
 
         return result;
     });
@@ -100,14 +101,22 @@ const parseLine = (line: string, isInCodeBlock: boolean = false): DocumentLine =
     // 行タイプを判定（コードブロック状態を考慮）
     const lineType = determineLineType(trimmedLine, isInCodeBlock);
 
-    // 基本的な書式情報を初期化（詳細な書式解析は後のタスクで実装）
-    const formatting: FormatInfo = createDefaultFormatInfo();
+    // 書式情報を生成（見出し記法の解析を含む）
+    const formatting: FormatInfo = analyzeFormatting(trimmedLine, lineType);
 
-    // Markdown記法を除去したプレーンテキストを取得
-    const content = extractPlainText(trimmedLine, lineType);
+    // リッチテキストセグメントを生成
+    // NOTE: generateRichTextSegments内でstripPrefixも行われる
+    // コードブロック内の段落（＝コード内容）は書式解析せず、そのままテキストとして扱う
+    // リッチテキストセグメントを生成
+    // NOTE: generateRichTextSegments内でstripPrefixも行われる
+    const richText = determineRichTextSegments(trimmedLine, lineType, formatting, isInCodeBlock);
+
+    // リッチテキストからプレーンテキストを生成（書式なし、プレフィックスなし）
+    const plainText = richText.map(segment => segment.text).join('');
 
     return {
-        content,
+        richText,
+        plainText,
         indentLevel,
         lineType,
         formatting,
@@ -243,71 +252,320 @@ const determineLineType = (trimmedLine: string, isInCodeBlock: boolean = false):
 };
 
 /**
+ * 書式情報を解析する
+ * @param line 対象行（インデント除去済み）
+ * @param lineType 行タイプ
+ * @returns FormatInfo
+ */
+const analyzeFormatting = (line: string, lineType: string): FormatInfo => {
+    const formatting = createDefaultFormatInfo();
+
+    // 見出し記法の解析
+    if (lineType === 'header') {
+        const headerLevel = detectHeaderLevel(line);
+        formatting.headerLevel = headerLevel;
+        formatting.fontSize = getHeaderFontSize(headerLevel);
+    }
+
+    // 引用の解析
+    if (lineType === 'quote') {
+        formatting.isQuote = true;
+        formatting.backgroundColor = defaultExcelConfig.quoteBackgroundColor;
+        formatting.leftBorderColor = defaultExcelConfig.quoteBorderColor;
+    }
+
+    // 水平線の解析
+    if (lineType === 'horizontal_rule') {
+        formatting.isHorizontalRule = true;
+        formatting.bottomBorderColor = defaultExcelConfig.horizontalRuleColor;
+    }
+
+    return formatting;
+};
+
+/**
+ * リッチテキストセグメントを生成する
+ * @param line 対象行（インデント除去済み）
+ * @param lineType 行タイプ
+ * @param formatting 行全体の書式情報
+ * @returns RichTextSegment配列
+ */
+const generateRichTextSegments = (line: string, lineType: string, formatting: FormatInfo): RichTextSegment[] => {
+    // 行タイプに応じたプレフィックス除去と置換
+    let content = stripLinePrefix(line, lineType);
+
+    // コンテンツ全体が置き換わる特別なケース
+    if (lineType === 'horizontal_rule') {
+        return [{ text: '水平線' }];
+    }
+    if (lineType === 'table') {
+        return [{ text: '表：' + content }];
+    }
+    if (lineType === 'empty') {
+        return [{ text: '' }];
+    }
+
+    // 引用の場合はプレフィックス付与
+    if (lineType === 'quote') {
+        content = `引用：${content}`;
+    }
+
+    // インライン書式記法を解析してリッチテキストセグメントを生成
+    return parseInlineFormatting(content);
+};
+
+/**
+ * 行の状態に基づいてリッチテキストセグメントを決定する
+ * @param line 対象行
+ * @param lineType 行タイプ
+ * @param formatting 書式情報
+ * @param isInCodeBlock コードブロック内かどうか
+ * @returns RichTextSegment配列
+ */
+const determineRichTextSegments = (line: string, lineType: string, formatting: FormatInfo, isInCodeBlock: boolean): RichTextSegment[] => {
+    // コードブロック内の段落（＝コード内容）は書式解析せず、そのままテキストとして扱う
+    if (isInCodeBlock && lineType === 'paragraph') {
+        return [{ text: stripLinePrefix(line, lineType) }];
+    }
+
+    return generateRichTextSegments(line, lineType, formatting);
+};
+
+/**
+ * 行タイプに応じてMarkdownのプレフィックスを除去する
+ * @param line 対象行
+ * @param lineType 行タイプ
+ * @returns プレフィックス除去後のテキスト
+ */
+const stripLinePrefix = (line: string, lineType: string): string => {
+    switch (lineType) {
+        case 'header':
+            // 見出し記号（#）と直後の1つのスペースのみを除去
+            return line.replace(/^#{1,6}\s/, '');
+        case 'list_item':
+            // リスト記号と直後の1つのスペースのみを除去
+            return line.replace(/^[-*+]\s/, '').replace(/^\d+\.\s/, '');
+        case 'code_block':
+            // コードブロック記号を除去
+            return line.replace(/^```.*$/, '');
+        case 'quote':
+            // 引用記号を除去
+            return line.replace(/^> ?/, '');
+        default:
+            return line;
+    }
+};
+
+/**
+ * インライン書式記法を解析してRichTextSegment配列を生成する
+ * markedライブラリを使用して解析を行う
+ * @param text 対象テキスト
+ * @returns RichTextSegment配列
+ */
+const parseInlineFormatting = (text: string): RichTextSegment[] => {
+    // markedのLexerを使用してインライン解析を実行
+    const lexer = new Lexer();
+
+    // LexerのinlineTokensメソッドを使用してインライン要素のみを解析する
+    // 型定義にメソッドが含まれていない場合があるためキャストして使用
+    const tokens = (lexer as any).inlineTokens(text);
+
+    return convertTokensToSegments(tokens);
+};
+
+/**
+ * markedのトークンをRichTextSegmentに変換する
+ * @param tokens markedトークン配列
+ * @param currentFont 現在のフォントスタイル（再帰処理用）
+ * @returns RichTextSegment配列
+ */
+const convertTokensToSegments = (tokens: any[], currentFont: FontStyle = {}): RichTextSegment[] => {
+    const segments: RichTextSegment[] = [];
+
+    for (const token of tokens) {
+        switch (token.type) {
+            case 'text':
+            case 'escape':
+            case 'html': // 安全性のためHTMLもテキストとして扱う
+                segments.push({
+                    text: decodeHtmlEntities(token.text),
+                    font: { ...currentFont }
+                });
+                break;
+
+            case 'strong': // 太字
+                segments.push(...convertTokensToSegments(token.tokens, { ...currentFont, bold: true }));
+                break;
+
+            case 'em': // 斜体
+                segments.push(...convertTokensToSegments(token.tokens, { ...currentFont, italic: true }));
+                break;
+
+            case 'del': // 取り消し線
+                segments.push(...convertTokensToSegments(token.tokens, { ...currentFont, strike: true }));
+                break;
+
+            case 'codespan': // インラインコード
+                // コード部分は単一セグメント
+                segments.push({
+                    text: decodeHtmlEntities(token.text),
+                    font: {
+                        ...currentFont,
+                        code: true,
+                        // コード用フォント設定などはExcel生成側で行うが、
+                        // ここでは必要に応じてフラグを持たせてもよい
+                        // 現在は仕様書に「等幅フォント」とあるため、フォント名を指定
+                        name: defaultExcelConfig.codeFontName
+                    }
+                });
+                break;
+
+            case 'link': // リンク
+                // リンクテキストを再帰的に解析（リンク内の太字などをサポート）
+                // リンク情報は別途管理が必要だが、RichTextSegmentには文字色等を設定
+                const linkSegments = convertTokensToSegments(token.tokens, {
+                    ...currentFont,
+                    color: { argb: 'FF0563C1' }, // 標準的なリンク色（青）
+                    underline: true
+                });
+
+                // リンクURL情報を各セグメントに付与
+                linkSegments.forEach(segment => {
+                    segment.link = { target: token.href };
+                });
+
+                segments.push(...linkSegments);
+                break;
+
+            case 'image': // 画像
+                // 画像は「代替テキスト」として表示
+                segments.push({
+                    text: token.text || '画像',
+                    font: {
+                        ...currentFont,
+                        color: { argb: 'FF808080' } // グレー
+                    },
+                    image: {
+                        src: token.href,
+                        alt: token.text
+                    }
+                });
+                break;
+
+            default:
+                // その他のトークンはテキストとして扱う
+                if (token.text) {
+                    segments.push({
+                        text: decodeHtmlEntities(token.text),
+                        font: { ...currentFont }
+                    });
+                }
+                break;
+        }
+    }
+
+    return mergeAdjacentSegments(segments);
+};
+
+/**
+ * HTMLエンティティをデコードする
+ * markedはデフォルトで特殊文字をエスケープするため、元のテキストに戻す必要がある
+ * @param text デコード対象のテキスト
+ * @returns デコード後のテキスト
+ */
+const decodeHtmlEntities = (text: string): string => {
+    return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+};
+
+/**
+ * 隣接する同じスタイルのセグメントを結合する
+ * @param segments 結合対象のセグメント配列
+ * @returns 結合後のセグメント配列
+ */
+const mergeAdjacentSegments = (segments: RichTextSegment[]): RichTextSegment[] => {
+    if (segments.length === 0) return [];
+
+    const merged: RichTextSegment[] = [segments[0]];
+
+    for (let i = 1; i < segments.length; i++) {
+        const prev = merged[merged.length - 1];
+        const curr = segments[i];
+
+        if (isSameFont(prev.font, curr.font)) {
+            prev.text += curr.text;
+        } else {
+            merged.push(curr);
+        }
+    }
+
+    return merged;
+};
+
+/**
+ * フォントスタイルが同じかどうか判定する
+ * @param previousFont 比較元のフォントスタイル
+ * @param currentFont 比較対象のフォントスタイル
+ * @returns スタイルが完全に一致する場合はtrue
+ */
+const isSameFont = (previousFont: FontStyle | undefined, currentFont: FontStyle | undefined): boolean => {
+    // 両方undefined/nullなら同じ
+    if (!previousFont && !currentFont) return true;
+    if (!previousFont || !currentFont) return false;
+
+    // プロパティ比較
+    const previousKeys = Object.keys(previousFont);
+    const currentKeys = Object.keys(currentFont);
+    if (previousKeys.length !== currentKeys.length) return false;
+
+    for (const key of previousKeys) {
+        if (typeof previousFont[key] === 'object') {
+            // ネストしたオブジェクト（colorなど）の簡易比較
+            if (JSON.stringify(previousFont[key]) !== JSON.stringify(currentFont[key])) return false;
+            continue;
+        }
+
+        if (previousFont[key] !== currentFont[key]) return false;
+    }
+    return true;
+};
+
+/**
+ * 見出しレベルを検出する
+ * @param line 対象行
+ * @returns 見出しレベル（1-6、見出しでない場合は0）
+ */
+const detectHeaderLevel = (line: string): number => {
+    const match = line.match(/^(#{1,6})\s/);
+    return match ? match[1].length : 0;
+};
+
+/**
+ * 見出しレベルに対応するフォントサイズを取得する
+ * @param headerLevel 見出しレベル（1-6）
+ * @returns フォントサイズ
+ */
+const getHeaderFontSize = (headerLevel: number): number => {
+    // デフォルト設定から見出しレベル別フォントサイズを取得
+    return defaultExcelConfig.headerFontSizes[headerLevel] || defaultExcelConfig.baseFontSize;
+};
+
+/**
  * デフォルトの書式情報を作成する
  * @returns デフォルトのFormatInfo
  */
 const createDefaultFormatInfo = (): FormatInfo => {
     return {
-        isBold: false,
-        isItalic: false,
-        isStrikethrough: false,
-        isCode: false,
         isQuote: false,
         isHorizontalRule: false,
         headerLevel: 0,
-        hyperlinkUrl: '',
         backgroundColor: '',
-        fontSize: 11
+        fontSize: defaultExcelConfig.baseFontSize,
+        leftBorderColor: '',
+        bottomBorderColor: ''
     };
-};
-
-/**
- * Markdown記法を除去してプレーンテキストを抽出する
- * @param line 対象行
- * @param lineType 行タイプ
- * @returns プレーンテキスト
- */
-const extractPlainText = (line: string, lineType: string): string => {
-    let content = line;
-
-    switch (lineType) {
-        case 'empty':
-            return '';
-
-        case 'header':
-            // 見出し記号（#）と直後の1つのスペースのみを除去
-            content = content.replace(/^#{1,6}\s/, '');
-            break;
-
-        case 'list_item':
-            // リスト記号と直後の1つのスペースのみを除去
-            content = content.replace(/^[-*+]\s/, '').replace(/^\d+\.\s/, '');
-            break;
-
-        case 'code_block':
-            // コードブロック記号を除去
-            content = content.replace(/^```.*$/, '');
-            break;
-
-        case 'quote':
-            // 引用記号を除去し、「引用：」プレフィックスを追加
-            const quoteContent = content.replace(/^>\s*/, '');
-            return `引用：${quoteContent}`;
-
-        case 'horizontal_rule':
-            // 水平線を説明文に変換
-            return '水平線';
-
-        case 'table':
-            // 表を説明文に変換
-            return '表：' + content;
-
-        default:
-            // 段落はそのまま
-            break;
-    }
-
-    // タスク2では基本的な記法除去のみ実行
-    // インライン書式の詳細解析はタスク3で実装予定
-    return content;
 };

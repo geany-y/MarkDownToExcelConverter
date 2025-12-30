@@ -1,0 +1,187 @@
+# Anti Gravity Configuration (Project Rules)
+
+This file contains project rules and context derived from Kiro's AWS steering files.
+
+## Product Overview
+(Source: .kiro/steering/product.md)
+
+Markdown to Excel Converter
+
+Markdownファイルを文書構造とインデントを保持したままExcel形式に変換するElectronデスクトップアプリケーションです。
+
+### 主要機能
+- Markdownの構造とインデントレベルを保持
+- Excel方眼紙形式での出力
+- Markdown書式をExcel書式に変換
+- ファイル選択用のシンプルなGUIインターフェース
+- クロスプラットフォーム対応（Windows、macOS、Linux）
+
+### 対象ユースケース
+構造化されたMarkdownドキュメント（見出し、リスト、コードブロック、引用など）を、インデントと書式による視覚的階層を維持したExcelスプレッドシートに変換することです。
+
+### 言語対応
+このアプリケーションは主に日本語ユーザー向けに開発されており、コードベース全体で日本語のコメントとエラーメッセージを使用しています。
+
+## Technology Stack
+(Source: .kiro/steering/tech.md)
+
+### コア技術
+- **Electron**: デスクトップアプリケーションフレームワーク
+- **TypeScript**: 厳格な型チェックを有効にした主要言語
+- **Node.js**: ランタイム環境（v18以上）
+- **ExcelJS**: Excelファイル生成ライブラリ
+- **Marked**: Markdown解析ライブラリ
+
+### 開発ツール
+- **Jest**: ts-jestプリセットを使用したテストフレームワーク
+- **fast-check**: プロパティベーステストライブラリ
+- **electron-builder**: アプリケーションのパッケージングと配布
+
+### ビルドシステム
+- **TypeScriptコンパイラ**: src/をdist/にコンパイル
+- **ターゲット**: ES2020、CommonJSモジュール
+- **ソースマップ**: デバッグ用に有効化
+
+### よく使うコマンド
+
+#### 開発
+```bash
+npm run dev          # TypeScriptビルド後にElectronを起動
+npm run build        # TypeScriptをdist/にコンパイル
+npm start            # ビルド後にアプリケーションを起動
+```
+
+#### テスト
+```bash
+npm test             # 全テストを実行
+npm run test:watch   # テストの監視モード
+```
+
+#### 配布
+```bash
+npm run pack         # インストーラーなしでパッケージ化
+npm run dist         # 配布用パッケージを作成
+```
+
+### プロジェクト設定
+- **TypeScript**: 厳格モード有効、パスエイリアス設定済み（@/*）
+- **Jest**: Node環境、カバレッジレポート有効
+- **Electron Builder**: マルチプラットフォームビルド（Windows NSIS、macOS DMG、Linux AppImage）
+
+### アーキテクチャパターン
+- **メインプロセス**: Electronアプリのライフサイクル、IPCハンドラー、ウィンドウ管理
+- **レンダラープロセス**: ファイルダイアログとユーザーインタラクションを含むUI層
+- **パーサーモジュール**: インデント検出を伴う行単位の解析
+- **型システム**: ドキュメント構造とExcel設定の集約されたインターフェース
+
+## Project Structure
+(Source: .kiro/steering/structure.md)
+
+### ディレクトリ構成
+
+```
+├── src/                    # TypeScriptソースコード
+│   ├── main.ts            # Electronメインプロセスのエントリーポイント
+│   ├── parser/            # Markdown解析ロジック
+│   ├── test-utils/        # テストユーティリティとヘルパー
+│   └── types/             # TypeScript型定義
+├── renderer/              # Electronレンダラープロセス（UI）
+├── dist/                  # コンパイル済みTypeScript出力
+├── release/               # 配布パッケージ
+└── node_modules/          # 依存関係
+```
+
+### コード構成パターン
+
+#### メインプロセス（`src/main.ts`）
+- Electronアプリのライフサイクル管理
+- ファイルダイアログ用のIPCハンドラー
+- ウィンドウの作成と管理
+- 開発環境と本番環境の処理分岐
+
+#### パーサーモジュール（`src/parser/`）
+- ファイル処理用の`MarkdownParser`クラス
+- インデント検出を伴う行単位の解析
+- Markdown構文の認識と分類
+- 構造化された`Document`形式への型変換
+
+#### 型システム（`src/types/`）
+- コアインターフェース：`DocumentLine`、`FormatInfo`、`Document`
+- Excel設定の型とデフォルト値
+- 詳細なJSDocを含む集約された型定義
+
+#### テストユーティリティ（`src/test-utils/`）
+- 共有テストヘルパーとジェネレーター
+- fast-checkによるプロパティベーステストサポート
+- 再利用可能なテストデータ作成関数
+
+### 命名規則
+- **ファイル**: kebab-case（例：`markdown-parser.ts`）
+- **クラス**: PascalCase（例：`MarkdownParser`）
+- **インターフェース**: PascalCase（例：`DocumentLine`）
+- **関数**: 説明的な名前のcamelCase
+- **定数**: 設定用はcamelCase、真の定数はUPPER_CASE
+
+### パスエイリアス
+- `@/*` は `src/*` にマップされ、よりクリーンなインポートを実現
+- `@/types/*` は型のインポート用
+- `@/test-utils/*` はテストユーティリティ用
+
+---
+inclusion: always
+---
+<!------------------------------------------------------------------------------------
+   Add rules to this file or a short description that will apply across all your workspaces.
+
+   Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
+------------------------------------------------------------------------------------->
+# 共通ルール
+
+## コマンドライン実行時の確認ルール
+- Kiroでは長い処理をコマンドラインで行った際に結果の確認が不正確なため、処理完了後は必ずユーザーに結果の確認を行う
+- テスト実行、ビルド処理、その他の長時間実行されるコマンドについては、実行後にユーザーに成功/失敗の確認を求める
+- コマンドの出力結果が不明確な場合は、推測せずにユーザーに状況を報告し、確認を依頼する
+
+# 言語(プログラムの言語ではない)
+- 基本言語は全て日本語とします
+   - チャットのやりとり
+   - コンソールや画面などへ出力するテキスト
+   - ソース内のコメント
+
+# Kiroによるコマンド実行時のルール
+- コンソールはWSL2がベースなためにPower Shellのコマンドは利用せずBashのコマンドで行う
+- Kiroではコマンドの完了を正しく確認できていないために次のアクションの前にユーザに結果の確認を依頼してください
+   - npm install(他の言語のライブラリのインストールなども含む)なやtestなど時間がかかるもの
+
+# GIT運用ルール
+- 新しいタスクを実行する場合は、必ずブランチ名を作成してチェックアウトしてから、そのブランチでタスクを完了してください
+## ブランチ名
+- feature/kiro_[タスクNo]_[タスクの内容]
+   - ブランチ名はスネークケースとし「.」などの記号は含めない
+## レビュー
+- ソース生成後は必ず私にレビューを依頼してください
+## mainへのマージ
+- レビューを終えタスクが完了したらファイルをステージに移動しコミットを行いmainへマージしてください
+   - コミットコメントは簡潔かつ要点を記載
+
+# プログラミング規約
+## 共通
+- クラス名・メソッド名・変数名は、英語のネイティブ以外でも理解できる単語で構成する
+- 上記に加え名前の短さよりも有意性(役割が明瞭)を優先する
+- 早期リターンを用い可読性とメンテナンス性を高める
+- ガード文で可読性とメンテナンス性を高める
+- 深いネストはさける
+- メソッドコメント（JSDoc）は必ず記載する
+    - 引数がある場合は `@param`、戻り値がある場合は `@returns` を必須とする
+- elseは原則禁止とする
+    - 理由: ネストを浅くし、可読性とメンテナンス性を向上させるため。早期リターンやガード節を積極的に活用すること
+- 変数名・関数名における連番（num1, num2, item1, item2など）は絶対に使用しない
+    - 理由: その変数が何を表しているのか、文脈や役割が不明瞭になるため。必ず役割や意図が明確になる有意な名前を付けること（例: prevFont, specificFont など）
+
+## JavaScript(TypeScript)
+- 基本は関数ベースで機能を作成する
+   - 情報の保持はオブジェクトや連想配列で出来る限り実現する
+- Globalな変数は極力使用しない
+   - 関数を使い引数や戻り値で工夫する
+- letは極力使用しない
+- TypeScriptではanyは出来る限りさける

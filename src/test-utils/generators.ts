@@ -1,5 +1,5 @@
 import * as fc from 'fast-check';
-import { DocumentLine, FormatInfo, ExcelConfig, defaultExcelConfig } from '@/types';
+import { DocumentLine, FormatInfo, ExcelConfig, defaultExcelConfig, RichTextSegment } from '@/types';
 
 /**
  * Markdownテキスト生成用のジェネレーター
@@ -92,29 +92,52 @@ export const excelFileNameGenerator = fc.string({ minLength: 1, maxLength: 50 })
  * FormatInfo生成用のジェネレーター
  */
 export const formatInfoGenerator: fc.Arbitrary<FormatInfo> = fc.record({
-    isBold: fc.boolean(),
-    isItalic: fc.boolean(),
-    isStrikethrough: fc.boolean(),
-    isCode: fc.boolean(),
     isQuote: fc.boolean(),
     isHorizontalRule: fc.boolean(),
     headerLevel: fc.integer({ min: 0, max: 6 }),
-    hyperlinkUrl: fc.oneof(
-        fc.constant(''),
-        fc.webUrl()
-    ),
     backgroundColor: fc.oneof(
         fc.constant(''),
         fc.hexaString({ minLength: 6, maxLength: 6 })
     ),
-    fontSize: fc.integer({ min: 8, max: 72 })
+    fontSize: fc.integer({ min: 8, max: 72 }),
+    leftBorderColor: fc.oneof(
+        fc.constant(''),
+        fc.hexaString({ minLength: 6, maxLength: 6 })
+    ),
+    bottomBorderColor: fc.oneof(
+        fc.constant(''),
+        fc.hexaString({ minLength: 6, maxLength: 6 })
+    )
+});
+
+/**
+ * RichTextSegment生成用のジェネレーター
+ */
+export const richTextSegmentGenerator = fc.record({
+    text: fc.string({ minLength: 0, maxLength: 100 }),
+    font: fc.option(fc.record({
+        bold: fc.option(fc.boolean(), { nil: undefined }),
+        italic: fc.option(fc.boolean(), { nil: undefined }),
+        strike: fc.option(fc.boolean(), { nil: undefined }),
+        underline: fc.option(fc.boolean(), { nil: undefined }),
+        name: fc.option(fc.oneof(
+            fc.constant('Arial'),
+            fc.constant('Calibri'),
+            fc.constant('Consolas')
+        ), { nil: undefined }),
+        size: fc.option(fc.integer({ min: 8, max: 72 }), { nil: undefined }),
+        color: fc.option(fc.record({
+            argb: fc.hexaString({ minLength: 8, maxLength: 8 })
+        }), { nil: undefined })
+    }), { nil: undefined })
 });
 
 /**
  * DocumentLine生成用のジェネレーター
  */
 export const documentLineGenerator: fc.Arbitrary<DocumentLine> = fc.record({
-    content: fc.string({ minLength: 0, maxLength: 200 }),
+    richText: fc.array(richTextSegmentGenerator, { minLength: 1, maxLength: 5 }),
+    plainText: fc.string({ minLength: 0, maxLength: 200 }),
     indentLevel: fc.integer({ min: 0, max: 10 }),
     lineType: fc.oneof(
         fc.constant('header'),

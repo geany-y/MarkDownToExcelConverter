@@ -52,7 +52,7 @@ export function readFileContent(filePath: string): string {
  */
 export function isValidDocumentLines(lines: DocumentLine[]): boolean {
     return lines.every(line =>
-        typeof line.content === 'string' &&
+        typeof line.plainText === 'string' &&
         typeof line.indentLevel === 'number' &&
         line.indentLevel >= 0 &&
         typeof line.lineType === 'string' &&
@@ -61,6 +61,7 @@ export function isValidDocumentLines(lines: DocumentLine[]): boolean {
         typeof line.originalLine === 'string'
     );
 }
+
 
 /**
  * Documentオブジェクトが有効かチェックするヘルパー関数
@@ -158,20 +159,18 @@ export function createMockDocumentLine(
     lineType: string = 'paragraph'
 ): DocumentLine {
     return {
-        content,
+        plainText: content,
+        richText: [{ text: content }], // 簡易的なrichText生成
         indentLevel,
         lineType,
         formatting: {
-            isBold: false,
-            isItalic: false,
-            isStrikethrough: false,
-            isCode: false,
             isQuote: false,
             isHorizontalRule: false,
             headerLevel: 0,
-            hyperlinkUrl: '',
             backgroundColor: '',
-            fontSize: 11
+            fontSize: 11,
+            leftBorderColor: '',
+            bottomBorderColor: ''
         },
         originalLine: content
     };

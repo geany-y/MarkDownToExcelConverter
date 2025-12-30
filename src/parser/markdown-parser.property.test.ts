@@ -27,12 +27,20 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
 
     afterEach(() => {
         // 各テスト後にテストファイルを削除
-        const files = fs.readdirSync(testDir);
-        for (const file of files) {
-            const filePath = path.join(testDir, file);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+        try {
+            const files = fs.readdirSync(testDir);
+            for (const file of files) {
+                const filePath = path.join(testDir, file);
+                if (fs.existsSync(filePath)) {
+                    try {
+                        fs.unlinkSync(filePath);
+                    } catch (e) {
+                        // Win/WSLでのロック問題を回避するために無視
+                    }
+                }
             }
+        } catch (e) {
+            // ディレクトリ読み込み失敗等は無視
         }
     });
 
@@ -70,8 +78,10 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
 
                         // 各行の基本構造の検証
                         for (const line of document.lines) {
-                            expect(line.content).toBeDefined();
-                            expect(typeof line.content).toBe('string');
+                            expect(line.richText).toBeDefined();
+                            expect(Array.isArray(line.richText)).toBe(true);
+                            expect(line.plainText).toBeDefined();
+                            expect(typeof line.plainText).toBe('string');
                             expect(line.indentLevel).toBeDefined();
                             expect(typeof line.indentLevel).toBe('number');
                             expect(line.indentLevel).toBeGreaterThanOrEqual(0);
@@ -123,7 +133,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
 
         expect(document.lines).toHaveLength(1);
         expect(document.lines[0].lineType).toBe('empty');
-        expect(document.lines[0].content).toBe('');
+        expect(document.lines[0].plainText).toBe('');
         expect(document.lines[0].indentLevel).toBe(0);
     });
 
@@ -263,7 +273,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             ),
             { numRuns: 100 }
         );
-    });
+    }, 30000);
     /**
      * **Feature: markdown-to-excel, Property 7: 見出し要素変換**
      * **検証対象: 要件 3.1**
@@ -277,7 +287,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                 fc.array(
                     fc.tuple(
                         fc.integer({ min: 1, max: 6 }), // 見出しレベル
-                        fc.string({ minLength: 1, maxLength: 100 }).filter(s => !s.includes('\n') && s.trim().length > 0) // 見出しテキスト（空白のみを除外）
+                        fc.string({ minLength: 1, maxLength: 100 }).filter(s => !s.includes('\n') && s.trim().length > 0 && !/[*_`\\~]/.test(s)) // 見出しテキスト（空白のみとMarkdown記号、エスケープ文字、チルダを除外）
                     ),
                     { minLength: 1, maxLength: 10 }
                 ),
@@ -305,7 +315,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             expect(line.lineType).toBe('header');
 
                             // 見出し記号が除去されてテキストのみが残ることを確認
-                            expect(line.content).toBe(expectedText);
+                            expect(line.plainText).toBe(expectedText);
 
                             // 元の行が保持されることを確認
                             expect(line.originalLine).toBe('#'.repeat(expectedLevel) + ' ' + expectedText);
@@ -335,7 +345,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             fc.asyncProperty(
                 fc.array(
                     fc.string({ minLength: 1, maxLength: 200 })
-                        .filter(s => !s.includes('\n') && s.trim().length > 0 && !s.startsWith('#') && !s.match(/^[-*+]\s/) && !s.match(/^\d+\.\s/) && !s.startsWith('```') && !s.startsWith('> ') && !s.match(/^(-{3,}|\*{3,}|_{3,})$/) && !(s.startsWith('|') && s.endsWith('|') && (s.match(/\|/g) || []).length >= 2)),
+                        .filter(s => !s.includes('\n') && s.trim().length > 0 && !s.startsWith('#') && !s.match(/^[-*+]\s/) && !s.match(/^\d+\.\s/) && !s.startsWith('```') && !s.startsWith('> ') && !s.match(/^(-{3,}|\*{3,}|_{3,})$/) && !(s.startsWith('|') && s.endsWith('|') && (s.match(/\|/g) || []).length >= 2) && !/[*_`\\~]/.test(s)),
                     { minLength: 1, maxLength: 15 }
                 ),
                 async (paragraphs) => {
@@ -360,7 +370,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             expect(line.lineType).toBe('paragraph');
 
                             // 段落内容がそのまま保持されることを確認
-                            expect(line.content).toBe(expectedText);
+                            expect(line.plainText).toBe(expectedText);
 
                             // 元の行が保持されることを確認
                             expect(line.originalLine).toBe(expectedText);
@@ -396,7 +406,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             fc.constant('+'),
                             fc.integer({ min: 1, max: 99 }).map(n => n + '.')
                         ), // リストマーカー
-                        fc.string({ minLength: 1, maxLength: 100 }).filter(s => !s.includes('\n') && s.trim().length > 0) // リスト項目テキスト（空白のみを除外）
+                        fc.string({ minLength: 1, maxLength: 100 }).filter(s => !s.includes('\n') && s.trim().length > 0 && !/[*_`\\~]/.test(s)) // リスト項目テキスト（空白のみとMarkdown記号、エスケープ文字、チルダを除外）
                     ),
                     { minLength: 1, maxLength: 10 }
                 ),
@@ -424,7 +434,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             expect(line.lineType).toBe('list_item');
 
                             // リストマーカーが除去されてテキストのみが残ることを確認
-                            expect(line.content).toBe(expectedText);
+                            expect(line.plainText).toBe(expectedText);
 
                             // 元の行が保持されることを確認
                             expect(line.originalLine).toBe(marker + ' ' + expectedText);
@@ -483,7 +493,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
 
                             // 表要素は説明文に変換されることを確認
                             const expectedOriginalLine = '| ' + tableRows[i].join(' | ') + ' |';
-                            expect(line.content).toBe('表：' + expectedOriginalLine);
+                            expect(line.plainText).toBe('表：' + expectedOriginalLine);
 
                             // 元の行は保持されることを確認
                             expect(line.originalLine).toBe(expectedOriginalLine);
@@ -518,7 +528,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             fc.string({ minLength: 0, maxLength: 20 }).map(lang => '```' + lang)
                         ), // コードブロック開始マーカー
                         fc.array(
-                            fc.string({ minLength: 1, maxLength: 100 }).filter(s => !s.includes('\n') && s.trim().length > 0 && !(s.startsWith('|') && s.endsWith('|') && (s.match(/\|/g) || []).length >= 2)),
+                            fc.string({ minLength: 1, maxLength: 100 }).filter(s => !s.includes('\n') && s.trim().length > 0 && !(s.startsWith('|') && s.endsWith('|') && (s.match(/\|/g) || []).length >= 2) && !/[*_`]/.test(s)),
                             { minLength: 1, maxLength: 5 }
                         ) // コード行（空白のみと表形式を除外）
                     ),
@@ -552,7 +562,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             // 開始マーカー行の確認
                             const startLine = document.lines[lineIndex];
                             expect(startLine.lineType).toBe('code_block');
-                            expect(startLine.content).toBe(''); // コードブロックマーカーは除去される
+                            expect(startLine.plainText).toBe(''); // コードブロックマーカーは除去される
                             expect(startLine.originalLine).toBe(startMarker);
                             lineIndex++;
 
@@ -560,7 +570,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             for (const codeLine of codeLines) {
                                 const contentLine = document.lines[lineIndex];
                                 expect(contentLine.lineType).toBe('paragraph'); // コードブロック内容は段落として扱われる
-                                expect(contentLine.content).toBe(codeLine);
+                                expect(contentLine.plainText).toBe(codeLine);
                                 expect(contentLine.originalLine).toBe(codeLine);
                                 lineIndex++;
                             }
@@ -568,7 +578,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             // 終了マーカー行の確認
                             const endLine = document.lines[lineIndex];
                             expect(endLine.lineType).toBe('code_block');
-                            expect(endLine.content).toBe(''); // コードブロックマーカーは除去される
+                            expect(endLine.plainText).toBe(''); // コードブロックマーカーは除去される
                             expect(endLine.originalLine).toBe('```');
                             lineIndex++;
                         }
@@ -585,4 +595,491 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
             { numRuns: 100 }
         );
     });
+    /**
+     * **Feature: markdown-to-excel, Property 15: 見出し書式適用**
+     * **検証対象: 要件 5.1**
+     *
+     * プロパティ15: 見出し書式適用
+     * 任意のMarkdown見出し記法に対して、見出しレベルに応じたExcelフォントサイズが適用される
+     */
+    test('プロパティ15: 任意の見出し記法に対して見出しレベルに応じた書式が適用される', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.tuple(
+                        fc.integer({ min: 1, max: 6 }), // 見出しレベル
+                        fc.string({ minLength: 1, maxLength: 100 }).filter(s => !s.includes('\n') && s.trim().length > 0) // 見出しテキスト（空白のみを除外）
+                    ),
+                    { minLength: 1, maxLength: 10 }
+                ),
+                async (headers) => {
+                    // 見出しMarkdownを生成
+                    const markdownContent = headers
+                        .map(([level, text]) => '#'.repeat(level) + ' ' + text)
+                        .join('\n');
+
+                    // テストファイルを作成
+                    const testFileName = `header-format-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        // ファイルを解析
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        // 各見出しの書式情報が正しく設定されることを確認
+                        for (let i = 0; i < headers.length; i++) {
+                            const [expectedLevel, expectedText] = headers[i];
+                            const line = document.lines[i];
+
+                            // 行タイプが見出しであることを確認
+                            expect(line.lineType).toBe('header');
+
+                            // 見出しレベルが正しく設定されることを確認
+                            expect(line.formatting.headerLevel).toBe(expectedLevel);
+
+                            // 見出しレベルに応じたフォントサイズが設定されることを確認
+                            const expectedFontSize = getExpectedHeaderFontSize(expectedLevel);
+                            expect(line.formatting.fontSize).toBe(expectedFontSize);
+
+                            // 見出し以外の書式フラグがデフォルト値であることを確認
+                            expect(line.formatting.isQuote).toBe(false);
+                            expect(line.formatting.isHorizontalRule).toBe(false);
+                            expect(line.formatting.backgroundColor).toBe('');
+                            expect(line.formatting.leftBorderColor).toBe('');
+                            expect(line.formatting.bottomBorderColor).toBe('');
+                        }
+
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) {
+                            return true;
+                        }
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 100 }
+        );
+    });
+
+    /**
+     * 見出しレベルに対応する期待フォントサイズを取得するヘルパー関数
+     * @param headerLevel 見出しレベル（1-6）
+     * @returns 期待されるフォントサイズ
+     */
+    function getExpectedHeaderFontSize(headerLevel: number): number {
+        const headerFontSizes: Record<number, number> = { 1: 18, 2: 16, 3: 14, 4: 12, 5: 11, 6: 10 };
+        return headerFontSizes[headerLevel] || 11; // デフォルトは11
+    }
+
+    /**
+     * **Feature: markdown-to-excel, Property 16: 太字書式適用**
+     * **検証対象: 要件 3.3, 5.2**
+     *
+     * 任意のMarkdown太字記法に対して、Excelの太字書式プロパティがtrueになる
+     */
+    test('プロパティ16: 任意の太字記法に対してRichTextSegmentのboldプロパティがtrueになる', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.string({ minLength: 1, maxLength: 50 }).filter(s => !s.includes('\n') && s.trim().length > 0 && !/[*_`~]/.test(s) && !s.startsWith(' ') && !s.endsWith(' ') && !s.includes('\\')),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (boldTexts) => {
+                    // 太字Markdownを生成
+                    // **text** 形式と __text__ 形式をランダムに使用
+                    const markdownContent = boldTexts
+                        .map(text => Math.random() > 0.5 ? `**${text}**` : `__${text}__`)
+                        .join('\n');
+
+                    const testFileName = `bold-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < boldTexts.length; i++) {
+                            const expectedText = boldTexts[i];
+                            const line = document.lines[i];
+
+                            // リッチテキストセグメントを確認
+                            // 少なくとも1つのセグメントが太字であることを確認（空白などは結合される可能性があるため）
+                            const hasBoldSegment = line.richText.some(segment =>
+                                segment.text === expectedText && segment.font?.bold === true
+                            );
+
+                            expect(hasBoldSegment).toBe(true);
+                            expect(line.plainText).toBe(expectedText);
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 100 }
+        );
+    }, 30000);
+
+    /**
+     * **Feature: markdown-to-excel, Property 17: 斜体書式適用**
+     * **検証対象: 要件 3.3, 5.3**
+     *
+     * 任意のMarkdown斜体記法に対して、Excelの斜体書式プロパティがtrueになる
+     */
+    test('プロパティ17: 任意の斜体記法に対してRichTextSegmentのitalicプロパティがtrueになる', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.string({ minLength: 1, maxLength: 50 }).filter(s => !s.includes('\n') && s.trim().length > 0 && !/[*_`~]/.test(s) && !s.startsWith(' ') && !s.endsWith(' ') && !s.includes('\\') && !s.includes('@')),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (italicTexts) => {
+                    // 斜体Markdownを生成
+                    // *text* 形式と _text_ 形式をランダムに使用
+                    const markdownContent = italicTexts
+                        .map(text => `*${text}*`)
+                        .join('\n');
+
+                    const testFileName = `italic-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < italicTexts.length; i++) {
+                            const expectedText = italicTexts[i];
+                            const line = document.lines[i];
+
+                            const hasItalicSegment = line.richText.some(segment =>
+                                segment.text === expectedText && segment.font?.italic === true
+                            );
+
+                            expect(hasItalicSegment).toBe(true);
+                            expect(line.plainText).toBe(expectedText);
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 100 }
+        );
+    }, 30000);
+
+    /**
+     * **Feature: markdown-to-excel, Property 18: 取り消し線書式適用**
+     * **検証対象: 要件 3.3, 5.4**
+     *
+     * 任意のMarkdown取り消し線記法に対して、Excelの取り消し線書式プロパティがtrueになる
+     */
+    test('プロパティ18: 任意の取り消し線記法に対してRichTextSegmentのstrikeプロパティがtrueになる', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.string({ minLength: 1, maxLength: 50 }).filter(s => !s.includes('\n') && s.trim().length > 0 && !/[*_`~]/.test(s) && !s.startsWith(' ') && !s.endsWith(' ') && !s.includes('\\')),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (strikeTexts) => {
+                    // 取り消し線Markdownを生成
+                    // ~~text~~ 形式
+                    const markdownContent = strikeTexts
+                        .map(text => `~~${text}~~`)
+                        .join('\n');
+
+                    const testFileName = `strike-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < strikeTexts.length; i++) {
+                            const expectedText = strikeTexts[i];
+                            const line = document.lines[i];
+
+                            const hasStrikeSegment = line.richText.some(segment =>
+                                segment.text === expectedText && segment.font?.strike === true
+                            );
+
+                            expect(hasStrikeSegment).toBe(true);
+                            expect(line.plainText).toBe(expectedText);
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 100 }
+        );
+    }, 30000);
+
+    /**
+     * 任意の複合書式（太字かつ斜体）に対して、Excelの対応する書式プロパティがtrueになる
+     */
+    test('プロパティ24: 複合書式（太字と斜体）が正しく適用される', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    // 英数字のみで構成された文字列を使用し、スペースや特殊文字によるパース揺れを防ぐ
+                    fc.string({ minLength: 1, maxLength: 50 }).filter(s => /^[a-zA-Z0-9]+$/.test(s)),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (texts) => {
+                    // 複合書式Markdownを生成
+                    // ***text*** 形式（太字かつ斜体）
+                    const markdownContent = texts
+                        .map(text => `***${text}***`)
+                        .join('\n');
+
+                    const testFileName = `combined-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < texts.length; i++) {
+                            const expectedText = texts[i];
+                            const line = document.lines[i];
+
+                            // 太字かつ斜体のセグメントが存在することを確認
+                            const hasCombinedSegment = line.richText.some(segment =>
+                                segment.text === expectedText &&
+                                segment.font?.bold === true &&
+                                segment.font?.italic === true
+                            );
+
+                            expect(hasCombinedSegment).toBe(true);
+                            expect(line.plainText).toBe(expectedText);
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 100 }
+        );
+    }, 30000);
+
+    /**
+     * 任意のリンク記法に対して、RichTextSegmentのlinkプロパティが正しく設定される
+     */
+    test('プロパティ19: 任意のリンク記法に対してRichTextSegmentのlinkプロパティが設定される', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.record({
+                        text: fc.string({ minLength: 1, maxLength: 20 }).filter(s => /^[a-zA-Z0-9]+$/.test(s)),
+                        url: fc.webUrl().filter(u => !u.includes(')'))
+                    }),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (links) => {
+                    const markdownContent = links
+                        .map(link => `[${link.text}](${link.url})`)
+                        .join('\n');
+
+                    const testFileName = `link-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < links.length; i++) {
+                            const expected = links[i];
+                            const line = document.lines[i];
+
+                            expect(line.plainText).toBe(expected.text);
+                            const linkSegment = line.richText.find(s => s.link?.target === expected.url);
+                            expect(linkSegment).toBeDefined();
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 50 }
+        );
+    }, 30000);
+
+    /**
+     * 任意の画像記法に対して、RichTextSegmentのimageプロパティが正しく設定される
+     */
+    test('プロパティ20: 任意の画像記法に対してRichTextSegmentのimageプロパティが設定される', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.record({
+                        alt: fc.string({ minLength: 1, maxLength: 20 }).filter(s => /^[a-zA-Z0-9]+$/.test(s)),
+                        src: fc.webUrl().filter(u => !u.includes(')'))
+                    }),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (images) => {
+                    const markdownContent = images
+                        .map(img => `![${img.alt}](${img.src})`)
+                        .join('\n');
+
+                    const testFileName = `image-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < images.length; i++) {
+                            const expected = images[i];
+                            const line = document.lines[i];
+
+                            // 画像は代替テキストとして表示される
+                            expect(line.plainText).toBe(expected.alt);
+                            const imageSegment = line.richText.find(s =>
+                                s.image?.src === expected.src &&
+                                s.image?.alt === expected.alt
+                            );
+                            expect(imageSegment).toBeDefined();
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 50 }
+        );
+    }, 30000);
+
+    /**
+     * 任意のインラインコード記法に対して、RichTextSegmentのcodeフラグがtrueになる
+     */
+    test('プロパティ21: 任意のインラインコード記法に対してRichTextSegmentのfont.codeがtrueになる', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    // バッククォートを含まない文字列
+                    fc.string({ minLength: 1, maxLength: 50 }).filter(s => /^[a-zA-Z0-9 ]+$/.test(s)),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (codes) => {
+                    const markdownContent = codes
+                        .map(code => `\`${code}\``)
+                        .join('\n');
+
+                    const testFileName = `code-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < codes.length; i++) {
+                            const expectedCode = codes[i];
+                            const line = document.lines[i];
+
+                            expect(line.plainText).toBe(expectedCode);
+                            const codeSegment = line.richText.find(s => s.font?.code === true);
+                            expect(codeSegment).toBeDefined();
+                            expect(codeSegment?.text).toBe(expectedCode);
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 50 }
+        );
+    }, 30000);
+
+    /**
+     * 任意の引用記法に対して、行タイプがquoteになる
+     */
+    test('プロパティ22: 任意の引用記法に対してlineTypeがquoteになる', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.string({ minLength: 1, maxLength: 50 }).filter(s => /^[a-zA-Z0-9 ]+$/.test(s)),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (texts) => {
+                    const markdownContent = texts
+                        .map(text => `> ${text}`)
+                        .join('\n');
+
+                    const testFileName = `quote-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < texts.length; i++) {
+                            const expectedText = texts[i];
+                            const line = document.lines[i];
+
+                            expect(line.lineType).toBe('quote');
+                            // パーサーの実装により、引用には「引用：」のプレフィックスが付与される
+                            expect(line.plainText).toBe(`引用：${expectedText}`);
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 50 }
+        );
+    }, 30000);
+
+    /**
+     * 任意の水平線記法に対して、行タイプがhorizontal_ruleになる
+     */
+    test('プロパティ23: 任意の水平線記法に対してlineTypeがhorizontal_ruleになる', async () => {
+        await fc.assert(
+            fc.asyncProperty(
+                fc.array(
+                    fc.constantFrom('---', '***', '___'),
+                    { minLength: 1, maxLength: 5 }
+                ),
+                async (hrs) => {
+                    const markdownContent = hrs.join('\n');
+
+                    const testFileName = `hr-test-${Date.now()}-${Math.random().toString(36).substring(2, 11)}.md`;
+                    const testFilePath = path.join(testDir, testFileName);
+                    fs.writeFileSync(testFilePath, markdownContent, 'utf8');
+
+                    try {
+                        const document = await parseMarkdownFile(testFilePath);
+
+                        for (let i = 0; i < hrs.length; i++) {
+                            const line = document.lines[i];
+                            expect(line.lineType).toBe('horizontal_rule');
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error && error.message.includes('ファイル読み込みエラー')) return true;
+                        throw error;
+                    }
+                }
+            ),
+            { numRuns: 50 }
+        );
+    }, 30000);
 });

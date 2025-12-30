@@ -1,4 +1,4 @@
-import { defaultExcelConfig } from '../../src/types';
+import { defaultExcelConfig } from '../../src/config';
 import { isValidExcelConfig } from '../../src/test-utils/helpers';
 
 describe('Types', () => {
@@ -26,9 +26,15 @@ describe('Types', () => {
         });
 
         it('背景色が16進数形式で定義されていること', () => {
-            expect(defaultExcelConfig.codeBackgroundColor).toMatch(/^[0-9A-F]{6}$/i);
-            expect(defaultExcelConfig.quoteBackgroundColor).toMatch(/^[0-9A-F]{6}$/i);
-            expect(defaultExcelConfig.imageBackgroundColor).toMatch(/^[0-9A-F]{6}$/i);
+            // 6桁または8桁の16進数（ARGB含む）を許容
+            const hexPattern = /^[0-9A-F]{6}([0-9A-F]{2})?$/i;
+            expect(defaultExcelConfig.codeBackgroundColor).toMatch(hexPattern);
+            expect(defaultExcelConfig.quoteBackgroundColor).toMatch(hexPattern);
+            expect(defaultExcelConfig.imageBackgroundColor).toMatch(hexPattern);
+            expect(defaultExcelConfig.codeColor).toMatch(hexPattern);
+            expect(defaultExcelConfig.inlineCodeColor).toMatch(hexPattern);
+            expect(defaultExcelConfig.linkColor).toMatch(hexPattern);
+            expect(defaultExcelConfig.imageAltColor).toMatch(hexPattern);
         });
     });
 });

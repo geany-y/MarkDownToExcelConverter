@@ -1,6 +1,7 @@
 import { parseMarkdownFile } from '../../src/parser/markdown-parser';
 import * as fs from 'fs';
 import * as path from 'path';
+import { LineType } from '../../src/types';
 
 describe('parseMarkdownFile', () => {
     const testFilePath = path.join(__dirname, 'test-markdown.md');
@@ -35,20 +36,20 @@ describe('parseMarkdownFile', () => {
         expect(document.metadata.totalLines).toBe(7);
 
         // 見出し1の確認
-        expect(document.lines[0].lineType).toBe('header');
+        expect(document.lines[0].lineType).toBe(LineType.Header);
         expect(document.lines[0].plainText).toBe('見出し1');
         expect(document.lines[0].indentLevel).toBe(0);
 
         // 段落の確認
-        expect(document.lines[1].lineType).toBe('paragraph');
+        expect(document.lines[1].lineType).toBe(LineType.Paragraph);
         expect(document.lines[1].plainText).toBe('段落テキスト');
 
         // リスト項目の確認
-        expect(document.lines[2].lineType).toBe('list_item');
+        expect(document.lines[2].lineType).toBe(LineType.ListItem);
         expect(document.lines[2].plainText).toBe('・ リスト項目1'); // 箇条書き記号が変換される
 
         // 空行の確認
-        expect(document.lines[4].lineType).toBe('empty');
+        expect(document.lines[4].lineType).toBe(LineType.Empty);
         expect(document.lines[4].plainText).toBe('');
 
         // インデントされたテキストの確認
@@ -139,18 +140,18 @@ describe('parseMarkdownFile', () => {
 
         const document = await parseMarkdownFile(testFilePath);
 
-        expect(document.lines[0].lineType).toBe('header');
-        expect(document.lines[1].lineType).toBe('header');
-        expect(document.lines[2].lineType).toBe('paragraph');
-        expect(document.lines[3].lineType).toBe('list_item');
-        expect(document.lines[4].lineType).toBe('list_item');
-        expect(document.lines[5].lineType).toBe('code_block');
-        expect(document.lines[6].lineType).toBe('paragraph'); // コードブロック内容
+        expect(document.lines[0].lineType).toBe(LineType.Header);
+        expect(document.lines[1].lineType).toBe(LineType.Header);
+        expect(document.lines[2].lineType).toBe(LineType.Paragraph);
+        expect(document.lines[3].lineType).toBe(LineType.ListItem);
+        expect(document.lines[4].lineType).toBe(LineType.ListItem);
+        expect(document.lines[5].lineType).toBe(LineType.CodeBlock);
+        expect(document.lines[6].lineType).toBe(LineType.Paragraph); // コードブロック内容
         expect(document.lines[6].richText[0].font?.color?.argb).toBe('FF000080'); // コードブロック内はダークブルー
-        expect(document.lines[7].lineType).toBe('code_block'); // コードブロック終了
-        expect(document.lines[8].lineType).toBe('quote');
-        expect(document.lines[9].lineType).toBe('horizontal_rule');
-        expect(document.lines[10].lineType).toBe('table');
+        expect(document.lines[7].lineType).toBe(LineType.CodeBlock); // コードブロック終了
+        expect(document.lines[8].lineType).toBe(LineType.Quote);
+        expect(document.lines[9].lineType).toBe(LineType.HorizontalRule);
+        expect(document.lines[10].lineType).toBe(LineType.Table);
     });
 
     it('複雑なネストしたリスト構造を正しく処理する', async () => {
@@ -169,32 +170,32 @@ describe('parseMarkdownFile', () => {
         expect(document.lines).toHaveLength(6);
 
         // 1. 番号リスト一つ目
-        expect(document.lines[0].lineType).toBe('list_item');
+        expect(document.lines[0].lineType).toBe(LineType.ListItem);
         expect(document.lines[0].plainText).toBe('1. 番号リスト一つ目');
         expect(document.lines[0].indentLevel).toBe(0);
 
         // 2. 番号リスト2つ目
-        expect(document.lines[1].lineType).toBe('list_item');
+        expect(document.lines[1].lineType).toBe(LineType.ListItem);
         expect(document.lines[1].plainText).toBe('2. 番号リスト2つ目'); // 連番が維持される
         expect(document.lines[1].indentLevel).toBe(0);
 
         // インデントした段落（実際はリスト項目として認識される）
-        expect(document.lines[2].lineType).toBe('list_item');
+        expect(document.lines[2].lineType).toBe(LineType.ListItem);
         expect(document.lines[2].plainText).toBe('・ インデントした段落(2に属する)');
         expect(document.lines[2].indentLevel).toBe(1);
 
         // さらにインデントした番号付きリスト一つ目
-        expect(document.lines[3].lineType).toBe('list_item');
+        expect(document.lines[3].lineType).toBe(LineType.ListItem);
         expect(document.lines[3].plainText).toBe('1. さらにインデントした番号付きリスト一つ目');
         expect(document.lines[3].indentLevel).toBe(1);
 
         // さらにインデントした番号付きリスト二つ目
-        expect(document.lines[4].lineType).toBe('list_item');
+        expect(document.lines[4].lineType).toBe(LineType.ListItem);
         expect(document.lines[4].plainText).toBe('2. さらにインデントした番号付きリスト二つ目');
         expect(document.lines[4].indentLevel).toBe(1);
 
         // 3. 番号リスト3つ目
-        expect(document.lines[5].lineType).toBe('list_item');
+        expect(document.lines[5].lineType).toBe(LineType.ListItem);
         expect(document.lines[5].plainText).toBe('3. 番号リスト3つ目');
         expect(document.lines[5].indentLevel).toBe(0);
     });
@@ -213,19 +214,19 @@ describe('parseMarkdownFile', () => {
 
         // 通常のテキスト
         expect(document.lines[0].plainText).toBe('通常のテキスト');
-        expect(document.lines[0].lineType).toBe('paragraph');
+        expect(document.lines[0].lineType).toBe(LineType.Paragraph);
 
         // 取り消し線のテキスト（現在は記法を除去してプレーンテキストとして処理）
         expect(document.lines[1].plainText).toBe('取り消し線のテキスト');
-        expect(document.lines[1].lineType).toBe('paragraph');
+        expect(document.lines[1].lineType).toBe(LineType.Paragraph);
 
         // 部分的に取り消しされたテキスト
         expect(document.lines[2].plainText).toBe('部分的に取り消しされたテキスト');
-        expect(document.lines[2].lineType).toBe('paragraph');
+        expect(document.lines[2].lineType).toBe(LineType.Paragraph);
 
         // 複数の取り消し線
         expect(document.lines[3].plainText).toBe('複数の単語が取り消しされる場合');
-        expect(document.lines[3].lineType).toBe('paragraph');
+        expect(document.lines[3].lineType).toBe(LineType.Paragraph);
     });
 
     it('太字記法を正しく処理する（記法除去と書式設定）', async () => {

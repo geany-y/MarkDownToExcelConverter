@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { parseMarkdownFile } from './parser/markdown-parser';
 import { writeExcel } from './writer/excel-writer';
-import { defaultExcelConfig } from './types';
+import { defaultExcelConfig } from './config';
 
 console.log('Main process starting...');
 

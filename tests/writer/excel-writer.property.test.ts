@@ -3,6 +3,8 @@ import * as ExcelJS from 'exceljs';
 import { writeExcel } from '../../src/writer/excel-writer';
 import { excelConfigGenerator, documentLineGenerator } from '../../src/test-utils/generators';
 import { Document } from '../../src/types';
+import { LineType } from '../../src/types';
+import { defaultExcelConfig } from '../../src/config';
 
 /**
  * ExcelWriter プロパティベーステスト
@@ -164,7 +166,7 @@ describe('ExcelWriter プロパティベーステスト', () => {
                     // 全ての行を強制的に空行にしたデータを作成
                     const emptyLines = lines.map(line => ({
                         ...line,
-                        lineType: 'empty' as const,
+                        lineType: LineType.Empty,
                         richText: [],
                         plainText: ''
                     }));
@@ -206,7 +208,7 @@ describe('ExcelWriter プロパティベーステスト', () => {
                         richText: [{ text }],
                         plainText: text,
                         indentLevel: 0,
-                        lineType: 'paragraph' as const,
+                        lineType: LineType.Paragraph,
                         formatting: { isQuote: false, isHorizontalRule: false, headerLevel: 0, backgroundColor: '', fontSize: 11, leftBorderColor: '', bottomBorderColor: '' },
                         originalLine: text
                     }));

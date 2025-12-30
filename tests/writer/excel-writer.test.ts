@@ -1,5 +1,6 @@
 import { writeExcel } from '../../src/writer/excel-writer';
-import { Document, defaultExcelConfig } from '../../src/types';
+import { Document, LineType } from '../../src/types';
+import { defaultExcelConfig } from '../../src/config';
 import * as ExcelJS from 'exceljs';
 
 describe('ExcelWriter', () => {
@@ -14,7 +15,7 @@ describe('ExcelWriter', () => {
                     ],
                     plainText: '通常のテキスト太字テキスト',
                     indentLevel: 0,
-                    lineType: 'paragraph',
+                    lineType: LineType.Paragraph,
                     formatting: {
                         isQuote: false,
                         isHorizontalRule: false,

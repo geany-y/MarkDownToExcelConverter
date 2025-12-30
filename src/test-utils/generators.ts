@@ -1,5 +1,6 @@
 import * as fc from 'fast-check';
-import { DocumentLine, FormatInfo, ExcelConfig, defaultExcelConfig, RichTextSegment } from '../types';
+import { DocumentLine, FormatInfo, ExcelConfig, RichTextSegment, LineType } from '../types';
+import { defaultExcelConfig } from '../config';
 
 /**
  * Markdownテキスト生成用のジェネレーター
@@ -140,11 +141,11 @@ export const documentLineGenerator: fc.Arbitrary<DocumentLine> = fc.record({
     plainText: fc.string({ minLength: 0, maxLength: 200 }),
     indentLevel: fc.integer({ min: 0, max: 10 }),
     lineType: fc.oneof(
-        fc.constant('header'),
-        fc.constant('paragraph'),
-        fc.constant('list_item'),
-        fc.constant('code_block'),
-        fc.constant('empty')
+        fc.constant(LineType.Header),
+        fc.constant(LineType.Paragraph),
+        fc.constant(LineType.ListItem),
+        fc.constant(LineType.CodeBlock),
+        fc.constant(LineType.Empty)
     ),
     formatting: formatInfoGenerator,
     originalLine: fc.string({ minLength: 0, maxLength: 250 })
@@ -173,7 +174,12 @@ export const excelConfigGenerator: fc.Arbitrary<ExcelConfig> = fc.record({
     quoteBackgroundColor: fc.hexaString({ minLength: 6, maxLength: 6 }),
     imageBackgroundColor: fc.hexaString({ minLength: 6, maxLength: 6 }),
     quoteBorderColor: fc.hexaString({ minLength: 6, maxLength: 6 }),
-    horizontalRuleColor: fc.hexaString({ minLength: 6, maxLength: 6 })
+    horizontalRuleColor: fc.hexaString({ minLength: 6, maxLength: 6 }),
+    codeColor: fc.hexaString({ minLength: 6, maxLength: 8 }),
+    inlineCodeColor: fc.hexaString({ minLength: 6, maxLength: 8 }),
+    linkColor: fc.hexaString({ minLength: 6, maxLength: 8 }),
+    imageAltColor: fc.constant(defaultExcelConfig.imageAltColor),
+    sheetName: fc.constant(defaultExcelConfig.sheetName)
 });
 
 /**

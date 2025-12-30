@@ -23,10 +23,25 @@ export const writeExcel = async (document: Document, config: ExcelConfig, output
     }
 
     // 新しいワークシートを追加
-    // シート名は重複を避けるため「MD_[ファイル名]」とし、31文字制限に収める
-    const baseFileName = path.parse(document.metadata.fileName || 'document').name;
-    const timestamp = new Date().getTime().toString().slice(-4);
-    const sheetName = `MD_${baseFileName}_${timestamp}`.substring(0, 31);
+    // シート名は設定値（デフォルト: Markdown）とし、重複する場合は連番を付与する
+    // 無限ループ防止のため、whileではなく上限付きのforループを使用する
+    const getUniqueSheetName = (baseName: string): string => {
+        if (!workbook.getWorksheet(baseName)) {
+            return baseName;
+        }
+
+        const MAX_RETRIES = 100;
+        for (let i = 1; i <= MAX_RETRIES; i++) {
+            const candidate = `${baseName} (${i})`;
+            if (!workbook.getWorksheet(candidate)) {
+                return candidate;
+            }
+        }
+        // 万が一100回試行しても重複する場合（稀なケース）は、タイムスタンプを付与
+        return `${baseName} (${Date.now()})`;
+    };
+
+    const sheetName = getUniqueSheetName(config.sheetName);
     const worksheet = workbook.addWorksheet(sheetName);
 
     // 方眼紙（グリッド）レイアウトの設定
@@ -63,7 +78,7 @@ export const writeExcel = async (document: Document, config: ExcelConfig, output
                 hyperlink: link
             };
             linkCell.font = {
-                color: { argb: 'FF0563C1' },
+                color: { argb: config.linkColor },
                 underline: true,
                 name: config.fontName,
                 size: config.baseFontSize
@@ -158,24 +173,7 @@ const collectAllLinks = (document: Document): string[] => {
     return orderedUrls;
 };
 
-/**
- * リッチテキストセグメントからリンク情報を抽出する
- * @param segments セグメント配列
- * @returns リンク情報の配列
- */
-const extractLinks = (segments: RichTextSegment[]): Array<{ target: string }> => {
-    const links: Array<{ target: string }> = [];
-    const seenTargets = new Set<string>();
 
-    segments.forEach(segment => {
-        if (segment.link?.target && !seenTargets.has(segment.link.target)) {
-            links.push({ target: segment.link.target });
-            seenTargets.add(segment.link.target);
-        }
-    });
-
-    return links;
-};
 
 /**
  * RichTextSegment配列をExcelJSのRichText形式に変換する
@@ -205,50 +203,14 @@ const convertToExcelRichText = (segments: RichTextSegment[]): ExcelJS.RichText[]
         };
 
         if (segment.font) {
-            richText.font = convertToExcelFont(segment.font);
+            // FontStyleにはアプリ独自の 'code' プロパティが含まれるが、ExcelJSのFont型には存在しないため除外する必要がある
+            // 分割代入（Rest Property）を使用して 'code' を取り除き、残りのプロパティ（ExcelJSと互換性あり）をそのまま割り当てる
+            const { code, ...excelFont } = segment.font;
+            richText.font = excelFont;
         }
 
         result.push(richText);
     });
 
     return result;
-};
-
-/**
- * FontStyleをExcelJSのFont形式に変換する
- * @param style 変換元のスタイル
- * @returns ExcelJSのフォント設定
- */
-const convertToExcelFont = (style: FontStyle): Partial<ExcelJS.Font> => {
-    const excelFont: Partial<ExcelJS.Font> = {};
-
-    if (style.bold) {
-        excelFont.bold = true;
-    }
-
-    if (style.italic) {
-        excelFont.italic = true;
-    }
-
-    if (style.strike) {
-        excelFont.strike = true;
-    }
-
-    if (style.underline) {
-        excelFont.underline = true;
-    }
-
-    if (style.size) {
-        excelFont.size = style.size;
-    }
-
-    if (style.name) {
-        excelFont.name = style.name;
-    }
-
-    if (style.color) {
-        excelFont.color = { argb: style.color.argb };
-    }
-
-    return excelFont;
 };

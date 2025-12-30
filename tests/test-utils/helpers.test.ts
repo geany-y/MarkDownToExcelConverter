@@ -12,7 +12,8 @@ import {
     createMockDocumentLine,
     createMockDocument
 } from '../../src/test-utils/helpers';
-import { defaultExcelConfig } from '../../src/types';
+import { LineType } from '../../src/types';
+import { defaultExcelConfig } from '../../src/config';
 
 describe('Test Helpers', () => {
     describe('ファイル操作ヘルパー', () => {
@@ -68,40 +69,40 @@ describe('Test Helpers', () => {
 
     describe('行タイプ判定', () => {
         it('見出しを正しく判定すること', () => {
-            expect(getLineType('# 見出し1')).toBe('header');
-            expect(getLineType('## 見出し2')).toBe('header');
-            expect(getLineType('### 見出し3')).toBe('header');
+            expect(getLineType('# 見出し1')).toBe(LineType.Header);
+            expect(getLineType('## 見出し2')).toBe(LineType.Header);
+            expect(getLineType('### 見出し3')).toBe(LineType.Header);
         });
 
         it('リスト項目を正しく判定すること', () => {
-            expect(getLineType('- リスト項目')).toBe('list_item');
-            expect(getLineType('* リスト項目')).toBe('list_item');
-            expect(getLineType('+ リスト項目')).toBe('list_item');
-            expect(getLineType('1. 番号付きリスト')).toBe('list_item');
+            expect(getLineType('- リスト項目')).toBe(LineType.ListItem);
+            expect(getLineType('* リスト項目')).toBe(LineType.ListItem);
+            expect(getLineType('+ リスト項目')).toBe(LineType.ListItem);
+            expect(getLineType('1. 番号付きリスト')).toBe(LineType.ListItem);
         });
 
         it('コードブロックを正しく判定すること', () => {
-            expect(getLineType('```')).toBe('code_block');
-            expect(getLineType('```javascript')).toBe('code_block');
+            expect(getLineType('```')).toBe(LineType.CodeBlock);
+            expect(getLineType('```javascript')).toBe(LineType.CodeBlock);
         });
 
         it('引用を正しく判定すること', () => {
-            expect(getLineType('> 引用テキスト')).toBe('quote');
+            expect(getLineType('> 引用テキスト')).toBe(LineType.Quote);
         });
 
         it('水平線を正しく判定すること', () => {
-            expect(getLineType('---')).toBe('horizontal_rule');
-            expect(getLineType('***')).toBe('horizontal_rule');
-            expect(getLineType('___')).toBe('horizontal_rule');
+            expect(getLineType('---')).toBe(LineType.HorizontalRule);
+            expect(getLineType('***')).toBe(LineType.HorizontalRule);
+            expect(getLineType('___')).toBe(LineType.HorizontalRule);
         });
 
         it('空行を正しく判定すること', () => {
-            expect(getLineType('')).toBe('empty');
-            expect(getLineType('   ')).toBe('empty');
+            expect(getLineType('')).toBe(LineType.Empty);
+            expect(getLineType('   ')).toBe(LineType.Empty);
         });
 
         it('段落を正しく判定すること', () => {
-            expect(getLineType('通常のテキスト')).toBe('paragraph');
+            expect(getLineType('通常のテキスト')).toBe(LineType.Paragraph);
         });
     });
 
@@ -121,7 +122,7 @@ describe('Test Helpers', () => {
                 fc.string(),
                 (line) => {
                     const lineType = getLineType(line);
-                    const validTypes = ['empty', 'header', 'list_item', 'code_block', 'quote', 'horizontal_rule', 'paragraph'];
+                    const validTypes = Object.values(LineType);
                     return validTypes.includes(lineType);
                 }
             ), { numRuns: 100 });

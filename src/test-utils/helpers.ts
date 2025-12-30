@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { DocumentLine, Document, ExcelConfig } from '../types';
+import { DocumentLine, Document, ExcelConfig, LineType } from '../types';
 
 /**
  * 一時ファイルを作成するヘルパー関数
@@ -100,17 +100,17 @@ export function isValidExcelConfig(config: ExcelConfig): boolean {
  */
 export function calculateIndentLevel(line: string, tabSize: number = 4): number {
     let indentLevel = 0;
-    let i = 0;
-
-    while (i < line.length) {
-        if (line[i] === ' ') {
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === ' ') {
             indentLevel++;
-        } else if (line[i] === '\t') {
-            indentLevel += tabSize;
-        } else {
-            break;
+            continue;
         }
-        i++;
+        if (char === '\t') {
+            indentLevel += tabSize;
+            continue;
+        }
+        break;
     }
 
     return Math.floor(indentLevel / tabSize);
@@ -119,35 +119,35 @@ export function calculateIndentLevel(line: string, tabSize: number = 4): number 
 /**
  * Markdownの行タイプを判定するヘルパー関数
  */
-export function getLineType(line: string): string {
+export function getLineType(line: string): LineType {
     const trimmed = line.trim();
 
     if (trimmed === '') {
-        return 'empty';
+        return LineType.Empty;
     }
 
     if (trimmed.startsWith('#')) {
-        return 'header';
+        return LineType.Header;
     }
 
     // 水平線の判定を先に行う（リスト項目の判定より前）
     if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
-        return 'horizontal_rule';
+        return LineType.HorizontalRule;
     }
 
     if (trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.startsWith('+') || /^\d+\./.test(trimmed)) {
-        return 'list_item';
+        return LineType.ListItem;
     }
 
     if (trimmed.startsWith('```')) {
-        return 'code_block';
+        return LineType.CodeBlock;
     }
 
     if (trimmed.startsWith('>')) {
-        return 'quote';
+        return LineType.Quote;
     }
 
-    return 'paragraph';
+    return LineType.Paragraph;
 }
 
 /**
@@ -156,7 +156,7 @@ export function getLineType(line: string): string {
 export function createMockDocumentLine(
     content: string = 'test content',
     indentLevel: number = 0,
-    lineType: string = 'paragraph'
+    lineType: LineType = LineType.Paragraph
 ): DocumentLine {
     return {
         plainText: content,

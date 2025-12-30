@@ -33,6 +33,20 @@ export interface RichTextSegment {
 }
 
 /**
+ * 行の種類を表す列挙型
+ */
+export enum LineType {
+    Paragraph = 'paragraph',
+    Header = 'header',
+    ListItem = 'list_item',
+    CodeBlock = 'code_block',
+    Quote = 'quote',
+    HorizontalRule = 'horizontal_rule',
+    Table = 'table',
+    Empty = 'empty'
+}
+
+/**
  * ドキュメントの行を表すインターフェース
  */
 export interface DocumentLine {
@@ -42,8 +56,8 @@ export interface DocumentLine {
     plainText: string;
     /** インデントレベル（0から開始） */
     indentLevel: number;
-    /** 行の種類（header, paragraph, list_item, code_block, empty） */
-    lineType: string;
+    /** 行の種類（LineType Enum） */
+    lineType: LineType;
     /** 行全体の書式情報 */
     formatting: FormatInfo;
     /** 元の行内容（デバッグ用） */
@@ -106,24 +120,32 @@ export interface ExcelConfig {
     imageBackgroundColor: string;
     /** 引用左境界線色 */
     quoteBorderColor: string;
+    /** コード文字色 */
+    codeColor: string;
+    /** インラインコード文字色 */
+    inlineCodeColor: string;
+    /** リンク文字色 */
+    linkColor: string;
+    /** 画像代替テキスト文字色 */
+    imageAltColor: string;
     /** 水平線色 */
     horizontalRuleColor: string;
+    /** シート名のベース文字列 */
+    sheetName: string;
 }
 
 /**
- * デフォルトのExcel設定
+ * markedライブラリのトークンタイプ定義
+ * アプリケーションでサポートするトークンのみを定義
  */
-export const defaultExcelConfig: ExcelConfig = {
-    cellWidth: 3.0,
-    rowHeight: 20.0,
-    indentColumnOffset: 1,
-    fontName: "Meiryo",
-    codeFontName: "Consolas",
-    baseFontSize: 11,
-    headerFontSizes: { 1: 18, 2: 16, 3: 14, 4: 12, 5: 11, 6: 10 },
-    codeBackgroundColor: "F5F5F5",
-    quoteBackgroundColor: "E8F4FD",
-    imageBackgroundColor: "FFF2CC",
-    quoteBorderColor: "4472C4",
-    horizontalRuleColor: "D0D0D0"
-};
+export enum MarkedTokenType {
+    Text = 'text',
+    Escape = 'escape',
+    Html = 'html',
+    Strong = 'strong', // 太字
+    Em = 'em',         // 斜体
+    Del = 'del',       // 取り消し線
+    CodeSpan = 'codespan', // インラインコード
+    Link = 'link',     // リンク
+    Image = 'image'    // 画像
+}

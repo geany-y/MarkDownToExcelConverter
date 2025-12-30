@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseMarkdownFile } from '../../src/parser/markdown-parser';
 import { markdownDocumentGenerator } from '../../src/test-utils/generators';
+import { LineType } from '../../src/types';
 
 /**
  * **Feature: markdown-to-excel, Property 1: ファイル読み込みと解析**
@@ -132,7 +133,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
         const document = await parseMarkdownFile(testFilePath);
 
         expect(document.lines).toHaveLength(1);
-        expect(document.lines[0].lineType).toBe('empty');
+        expect(document.lines[0].lineType).toBe(LineType.Empty);
         expect(document.lines[0].plainText).toBe('');
         expect(document.lines[0].indentLevel).toBe(0);
     });
@@ -312,7 +313,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const line = document.lines[i];
 
                             // 行タイプが見出しであることを確認
-                            expect(line.lineType).toBe('header');
+                            expect(line.lineType).toBe(LineType.Header);
 
                             // 見出し記号が除去されてテキストのみが残ることを確認
                             expect(line.plainText).toBe(expectedText);
@@ -367,7 +368,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const line = document.lines[i];
 
                             // 行タイプが段落であることを確認
-                            expect(line.lineType).toBe('paragraph');
+                            expect(line.lineType).toBe(LineType.Paragraph);
 
                             // 段落内容がそのまま保持されることを確認
                             expect(line.plainText).toBe(expectedText);
@@ -431,7 +432,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const line = document.lines[i];
 
                             // 行タイプがリスト項目であることを確認
-                            expect(line.lineType).toBe('list_item');
+                            expect(line.lineType).toBe(LineType.ListItem);
 
                             // リストマーカーが除去されてテキストのみが残る（ただし、仕様変更により「・」などが付与される場合がある）
                             // 修正: リスト項目の場合、現在の実装ではリスト記号が変換されて付与される
@@ -495,7 +496,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const line = document.lines[i];
 
                             // 行タイプが表であることを確認
-                            expect(line.lineType).toBe('table');
+                            expect(line.lineType).toBe(LineType.Table);
 
                             // 表要素は説明文に変換されることを確認
                             const expectedOriginalLine = '| ' + tableRows[i].join(' | ') + ' |';
@@ -567,7 +568,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                         for (const [startMarker, codeLines] of codeBlocks) {
                             // 開始マーカー行の確認
                             const startLine = document.lines[lineIndex];
-                            expect(startLine.lineType).toBe('code_block');
+                            expect(startLine.lineType).toBe(LineType.CodeBlock);
                             expect(startLine.plainText).toBe(''); // コードブロックマーカーは除去される
                             expect(startLine.originalLine).toBe(startMarker);
                             lineIndex++;
@@ -575,7 +576,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             // コード内容行の確認
                             for (const codeLine of codeLines) {
                                 const contentLine = document.lines[lineIndex];
-                                expect(contentLine.lineType).toBe('paragraph'); // コードブロック内容は段落として扱われる
+                                expect(contentLine.lineType).toBe(LineType.Paragraph); // コードブロック内容は段落として扱われる
                                 expect(contentLine.plainText).toBe(codeLine);
                                 expect(contentLine.originalLine).toBe(codeLine);
                                 lineIndex++;
@@ -583,7 +584,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
 
                             // 終了マーカー行の確認
                             const endLine = document.lines[lineIndex];
-                            expect(endLine.lineType).toBe('code_block');
+                            expect(endLine.lineType).toBe(LineType.CodeBlock);
                             expect(endLine.plainText).toBe(''); // コードブロックマーカーは除去される
                             expect(endLine.originalLine).toBe('```');
                             lineIndex++;
@@ -639,7 +640,7 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const line = document.lines[i];
 
                             // 行タイプが見出しであることを確認
-                            expect(line.lineType).toBe('header');
+                            expect(line.lineType).toBe(LineType.Header);
 
                             // 見出しレベルが正しく設定されることを確認
                             expect(line.formatting.headerLevel).toBe(expectedLevel);
@@ -711,13 +712,18 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const line = document.lines[i];
 
                             // リッチテキストセグメントを確認
-                            // 少なくとも1つのセグメントが太字であることを確認（空白などは結合される可能性があるため）
-                            const hasBoldSegment = line.richText.some(segment =>
-                                segment.text === expectedText && segment.font?.bold === true
-                            );
+                            // markedがテキストを分割する場合があるため、テキスト全体が期待通りで、
+                            // かつ構成する全セグメントが太字であることを確認
 
-                            expect(hasBoldSegment).toBe(true);
+                            // 1. テキストの一致確認
                             expect(line.plainText).toBe(expectedText);
+
+                            // 2. 全セグメントが太字であることを確認
+                            // 注: 空文字セグメントが含まれる場合は除外して考える
+                            const segments = line.richText.filter(s => s.text.length > 0);
+                            const allBold = segments.every(s => s.font?.bold === true);
+
+                            expect(allBold).toBe(true);
                         }
                         return true;
                     } catch (error) {
@@ -761,12 +767,14 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const expectedText = italicTexts[i];
                             const line = document.lines[i];
 
-                            const hasItalicSegment = line.richText.some(segment =>
-                                segment.text === expectedText && segment.font?.italic === true
-                            );
-
-                            expect(hasItalicSegment).toBe(true);
+                            // 1. テキストの一致確認
                             expect(line.plainText).toBe(expectedText);
+
+                            // 2. 全セグメントが斜体であることを確認
+                            const segments = line.richText.filter(s => s.text.length > 0);
+                            const allItalic = segments.every(s => s.font?.italic === true);
+
+                            expect(allItalic).toBe(true);
                         }
                         return true;
                     } catch (error) {
@@ -810,12 +818,14 @@ describe('parseMarkdownFile プロパティベーステスト', () => {
                             const expectedText = strikeTexts[i];
                             const line = document.lines[i];
 
-                            const hasStrikeSegment = line.richText.some(segment =>
-                                segment.text === expectedText && segment.font?.strike === true
-                            );
-
-                            expect(hasStrikeSegment).toBe(true);
+                            // 1. テキストの一致確認
                             expect(line.plainText).toBe(expectedText);
+
+                            // 2. 全セグメントが取り消し線であることを確認
+                            const segments = line.richText.filter(s => s.text.length > 0);
+                            const allStrike = segments.every(s => s.font?.strike === true);
+
+                            expect(allStrike).toBe(true);
                         }
                         return true;
                     } catch (error) {
